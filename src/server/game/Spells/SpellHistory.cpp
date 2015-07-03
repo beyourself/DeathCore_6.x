@@ -244,7 +244,7 @@ bool SpellHistory::IsReady(SpellInfo const* spellInfo) const
 }
 
 template<class PacketType>
-void SpellHistory::WritePacket(PacketType* packet) const
+void SpellHistory::WritePacket(PacketType* /*packet*/) const
 {
     static_assert(!std::is_same<PacketType, PacketType>::value /*static_assert(false)*/, "This packet is not supported.");
 }
@@ -504,7 +504,7 @@ void SpellHistory::SendCooldownEvent(SpellInfo const* spellInfo, uint32 itemId /
     if (Player* player = GetPlayerOwner())
     {
         // Send activate cooldown timer (possible 0) at client side
-        player->SendDirectMessage(WorldPackets::Spells::CooldownEvent(_owner->GetGUID(), spellInfo->Id).Write());
+        player->SendDirectMessage(WorldPackets::Spells::CooldownEvent(player != _owner, spellInfo->Id).Write());
 
         uint32 category = spellInfo->GetCategory();
         if (category && spellInfo->CategoryRecoveryTime)
@@ -525,7 +525,7 @@ void SpellHistory::SendCooldownEvent(SpellInfo const* spellInfo, uint32 itemId /
                     if (!spellInfo2->IsCooldownStartedOnEvent())
                         continue;
 
-                    player->SendDirectMessage(WorldPackets::Spells::CooldownEvent(_owner->GetGUID(), categorySpell).Write());
+                    player->SendDirectMessage(WorldPackets::Spells::CooldownEvent(player != _owner, categorySpell).Write());
                 }
             }
         }
@@ -556,7 +556,7 @@ void SpellHistory::ModifyCooldown(uint32 spellId, int32 cooldownModMs)
     if (Player* playerOwner = GetPlayerOwner())
     {
         WorldPackets::Spells::ModifyCooldown modifyCooldown;
-        modifyCooldown.UnitGUID = _owner->GetGUID();
+        modifyCooldown.IsPet = _owner != playerOwner;
         modifyCooldown.SpellID = spellId;
         modifyCooldown.DeltaTime = cooldownModMs;
         playerOwner->SendDirectMessage(modifyCooldown.Write());
@@ -579,7 +579,7 @@ void SpellHistory::ResetCooldown(CooldownStorageType::iterator& itr, bool update
         if (Player* playerOwner = GetPlayerOwner())
         {
             WorldPackets::Spells::ClearCooldown clearCooldown;
-            clearCooldown.CasterGUID = _owner->GetGUID();
+            clearCooldown.IsPet = _owner != playerOwner;
             clearCooldown.SpellID = itr->first;
             clearCooldown.ClearOnHold = false;
             playerOwner->SendDirectMessage(clearCooldown.Write());
@@ -591,7 +591,7 @@ void SpellHistory::ResetCooldown(CooldownStorageType::iterator& itr, bool update
 
 void SpellHistory::ResetAllCooldowns()
 {
-    if (Player* playerOwner = GetPlayerOwner())
+    if (GetPlayerOwner())
     {
         std::vector<int32> cooldowns;
         cooldowns.reserve(_spellCooldowns.size());
@@ -753,7 +753,7 @@ void SpellHistory::ResetCharges(SpellCategoryEntry const* chargeCategoryEntry)
         if (Player* player = GetPlayerOwner())
         {
             WorldPackets::Spells::ClearSpellCharges clearSpellCharges;
-            clearSpellCharges.Unit = _owner->GetGUID();
+            clearSpellCharges.IsPet = _owner != player;
             clearSpellCharges.Category = chargeCategoryEntry->ID;
             player->SendDirectMessage(clearSpellCharges.Write());
         }
@@ -767,7 +767,7 @@ void SpellHistory::ResetAllCharges()
     if (Player* player = GetPlayerOwner())
     {
         WorldPackets::Spells::ClearAllSpellCharges clearAllSpellCharges;
-        clearAllSpellCharges.Unit = _owner->GetGUID();
+        clearAllSpellCharges.IsPet = _owner != player;
         player->SendDirectMessage(clearAllSpellCharges.Write());
     }
 }
@@ -783,7 +783,7 @@ bool SpellHistory::HasCharge(SpellCategoryEntry const* chargeCategoryEntry) cons
         return true;
 
     auto itr = _categoryCharges.find(chargeCategoryEntry->ID);
-    return itr == _categoryCharges.end() || itr->second.size() < maxCharges;
+    return itr == _categoryCharges.end() || int32(itr->second.size()) < maxCharges;
 }
 
 int32 SpellHistory::GetMaxCharges(SpellCategoryEntry const* chargeCategoryEntry) const
@@ -842,7 +842,7 @@ void SpellHistory::SendClearCooldowns(std::vector<int32> const& cooldowns) const
     if (Player const* playerOwner = GetPlayerOwner())
     {
         WorldPackets::Spells::ClearCooldowns clearCooldowns;
-        clearCooldowns.Guid = _owner->GetGUID();
+        clearCooldowns.IsPet = _owner != playerOwner;
         clearCooldowns.SpellID = cooldowns;
         playerOwner->SendDirectMessage(clearCooldowns.Write());
     }

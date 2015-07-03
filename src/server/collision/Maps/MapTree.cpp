@@ -90,7 +90,7 @@ namespace VMAP
     {
         std::stringstream tilefilename;
         tilefilename.fill('0');
-        tilefilename << std::setw(3) << mapID << '_';
+        tilefilename << std::setw(4) << mapID << '_';
         //tilefilename << std::setw(2) << tileX << '_' << std::setw(2) << tileY << ".vmtile";
         tilefilename << std::setw(2) << tileY << '_' << std::setw(2) << tileX << ".vmtile";
         return tilefilename.str();
@@ -386,13 +386,12 @@ namespace VMAP
                     {
                         if (!iLoadedSpawns.count(referencedVal))
                         {
-#ifdef VMAP_DEBUG
                             if (referencedVal > iNTreeValues)
                             {
-                                TC_LOG_DEBUG("maps", "StaticMapTree::LoadMapTile() : invalid tree element (%u/%u)", referencedVal, iNTreeValues);
+                                VMAP_ERROR_LOG("maps", "StaticMapTree::LoadMapTile() : invalid tree element (%u/%u) referenced in tile %s", referencedVal, iNTreeValues, tilefile.c_str());
                                 continue;
                             }
-#endif
+
                             iTreeValues[referencedVal] = ModelInstance(spawn, model);
                             iLoadedSpawns[referencedVal] = 1;
                         }

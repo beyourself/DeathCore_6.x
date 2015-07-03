@@ -97,9 +97,9 @@ class BattlegroundRV : public Arena
 
         /* inherited from BattlegroundClass */
         void StartingEventOpenDoors() override;
-        void FillInitialWorldStates(WorldPacket &d) override;
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
 
-        void HandleAreaTrigger(Player* Source, uint32 Trigger) override;
+        void HandleAreaTrigger(Player* source, uint32 trigger, bool entered) override;
         bool SetupBattleground() override;
 
     private:

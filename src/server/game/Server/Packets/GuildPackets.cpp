@@ -24,37 +24,41 @@ void WorldPackets::Guild::QueryGuildInfo::Read()
 }
 
 WorldPackets::Guild::QueryGuildInfoResponse::QueryGuildInfoResponse()
-    : ServerPacket(SMSG_GUILD_QUERY_RESPONSE) { }
+    : ServerPacket(SMSG_QUERY_GUILD_INFO_RESPONSE) { }
 
 WorldPacket const* WorldPackets::Guild::QueryGuildInfoResponse::Write()
 {
     _worldPacket << GuildGuid;
-    _worldPacket.WriteBit(Info.HasValue);
+    _worldPacket.WriteBit(Info.is_initialized());
+    _worldPacket.FlushBits();
 
-    if (Info.HasValue)
+    if (Info)
     {
-        _worldPacket << Info.Value.GuildGUID;
-        _worldPacket << uint32(Info.Value.VirtualRealmAddress);
-        _worldPacket << uint32(Info.Value.Ranks.size());
-        _worldPacket << uint32(Info.Value.EmblemStyle);
-        _worldPacket << uint32(Info.Value.EmblemColor);
-        _worldPacket << uint32(Info.Value.BorderStyle);
-        _worldPacket << uint32(Info.Value.BorderColor);
-        _worldPacket << uint32(Info.Value.BackgroundColor);
+        _worldPacket << Info->GuildGUID;
+        _worldPacket << uint32(Info->VirtualRealmAddress);
+        _worldPacket << uint32(Info->Ranks.size());
+        _worldPacket << uint32(Info->EmblemStyle);
+        _worldPacket << uint32(Info->EmblemColor);
+        _worldPacket << uint32(Info->BorderStyle);
+        _worldPacket << uint32(Info->BorderColor);
+        _worldPacket << uint32(Info->BackgroundColor);
 
-        for (GuildInfo::GuildInfoRank const& rank : Info.Value.Ranks)
+        for (GuildInfo::GuildInfoRank const& rank : Info->Ranks)
         {
             _worldPacket << uint32(rank.RankID);
             _worldPacket << uint32(rank.RankOrder);
 
             _worldPacket.WriteBits(rank.RankName.size(), 7);
+            _worldPacket.FlushBits();
+
             _worldPacket.WriteString(rank.RankName);
         }
 
-        _worldPacket.WriteBits(Info.Value.GuildName.size(), 7);
-        _worldPacket.WriteString(Info.Value.GuildName);
+        _worldPacket.WriteBits(Info->GuildName.size(), 7);
+        _worldPacket.FlushBits();
+
+        _worldPacket.WriteString(Info->GuildName);
     }
-    _worldPacket.FlushBits();
 
     return &_worldPacket;
 }
@@ -69,7 +73,6 @@ WorldPacket const* WorldPackets::Guild::GuildRoster::Write()
     for (GuildRosterMemberData const& member : MemberData)
         _worldPacket << member;
 
-    _worldPacket.ResetBitPos();
     _worldPacket.WriteBits(WelcomeText.length(), 10);
     _worldPacket.WriteBits(InfoText.length(), 10);
     _worldPacket.FlushBits();
@@ -509,6 +512,7 @@ WorldPacket const* WorldPackets::Guild::GuildPartyState::Write()
 ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildRewardItem const& rewardItem)
 {
     data << rewardItem.ItemID;
+    data << rewardItem.Unk4;
     data << uint32(rewardItem.AchievementsRequired.size());
     data << rewardItem.RaceMask;
     data << rewardItem.MinGuildLevel;
@@ -671,30 +675,30 @@ WorldPacket const* WorldPackets::Guild::GuildBankLogQueryResults::Write()
         _worldPacket << logEntry.TimeOffset;
         _worldPacket << logEntry.EntryType;
 
-        _worldPacket.WriteBit(logEntry.Money.HasValue);
-        _worldPacket.WriteBit(logEntry.ItemID.HasValue);
-        _worldPacket.WriteBit(logEntry.Count.HasValue);
-        _worldPacket.WriteBit(logEntry.OtherTab.HasValue);
+        _worldPacket.WriteBit(logEntry.Money.is_initialized());
+        _worldPacket.WriteBit(logEntry.ItemID.is_initialized());
+        _worldPacket.WriteBit(logEntry.Count.is_initialized());
+        _worldPacket.WriteBit(logEntry.OtherTab.is_initialized());
         _worldPacket.FlushBits();
 
-        if (logEntry.Money.HasValue)
-            _worldPacket << logEntry.Money.Value;
+        if (logEntry.Money.is_initialized())
+            _worldPacket << *logEntry.Money;
 
-        if (logEntry.ItemID.HasValue)
-            _worldPacket << logEntry.ItemID.Value;
+        if (logEntry.ItemID.is_initialized())
+            _worldPacket << *logEntry.ItemID;
 
-        if (logEntry.Count.HasValue)
-            _worldPacket << logEntry.Count.Value;
+        if (logEntry.Count.is_initialized())
+            _worldPacket << *logEntry.Count;
 
-        if (logEntry.OtherTab.HasValue)
-            _worldPacket << logEntry.OtherTab.Value;
+        if (logEntry.OtherTab.is_initialized())
+            _worldPacket << *logEntry.OtherTab;
     }
 
-    _worldPacket.WriteBit(WeeklyBonusMoney.HasValue);
+    _worldPacket.WriteBit(WeeklyBonusMoney.is_initialized());
     _worldPacket.FlushBits();
 
-    if (WeeklyBonusMoney.HasValue)
-        _worldPacket << WeeklyBonusMoney.Value;
+    if (WeeklyBonusMoney)
+        _worldPacket << *WeeklyBonusMoney;
 
     return &_worldPacket;
 }
@@ -747,11 +751,11 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Guild::GuildNewsEvent con
     for (ObjectGuid memberGuid : newsEvent.MemberList)
         data << memberGuid;
 
-    data.WriteBit(newsEvent.Item.HasValue);
+    data.WriteBit(newsEvent.Item.is_initialized());
     data.FlushBits();
 
-    if (newsEvent.Item.HasValue)
-        data << newsEvent.Item.Value;  // WorldPackets::Item::ItemInstance
+    if (newsEvent.Item)
+        data << *newsEvent.Item;  // WorldPackets::Item::ItemInstance
 
     return data;
 }
@@ -797,10 +801,10 @@ WorldPacket const* WorldPackets::Guild::GuildChallengeUpdate::Write()
 void WorldPackets::Guild::SaveGuildEmblem::Read()
 {
     _worldPacket >> Vendor;
-    _worldPacket >> BStyle;
     _worldPacket >> EStyle;
-    _worldPacket >> BColor;
     _worldPacket >> EColor;
+    _worldPacket >> BStyle;
+    _worldPacket >> BColor;
     _worldPacket >> Bg;
 }
 
@@ -809,4 +813,18 @@ WorldPacket const* WorldPackets::Guild::PlayerSaveGuildEmblem::Write()
     _worldPacket << int32(Error);
 
     return &_worldPacket;
+}
+
+
+void WorldPackets::Guild::GuildSetAchievementTracking::Read()
+{
+    uint32 count;
+    _worldPacket >> count;
+
+    for (uint32 i = 0; i < count; ++i)
+    {
+        uint32 value;
+        _worldPacket >> value;
+        AchievementIDs.insert(value);
+    }
 }

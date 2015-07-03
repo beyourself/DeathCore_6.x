@@ -80,7 +80,7 @@ class AuraApplication
         bool HasEffect(uint8 effect) const { ASSERT(effect < MAX_SPELL_EFFECTS);  return (_effectMask & (1 << effect)) != 0; }
         bool IsPositive() const { return (_flags & AFLAG_POSITIVE) != 0; }
         bool IsSelfcast() const { return (_flags & AFLAG_NOCASTER) != 0; }
-        uint8 GetEffectsToApply() const { return _effectsToApply; }
+        uint32 GetEffectsToApply() const { return _effectsToApply; }
 
         void SetRemoveMode(AuraRemoveMode mode) { _removeMode = mode; }
         AuraRemoveMode GetRemoveMode() const {return _removeMode;}
@@ -183,7 +183,7 @@ class Aura
 
         uint8 GetCasterLevel() const { return m_casterLevel; }
 
-        bool HasMoreThanOneEffectForType(AuraType auraType, uint32 difficulty) const;
+        bool HasMoreThanOneEffectForType(AuraType auraType) const;
         bool IsArea() const;
         bool IsPassive() const;
         bool IsDeathPersistent() const;
@@ -301,6 +301,7 @@ class Aura
         int32 m_maxDuration;                                // Max aura duration
         int32 m_duration;                                   // Current time
         int32 m_timeCla;                                    // Timer for power per sec calcultion
+        std::vector<SpellPowerEntry const*> m_periodicCosts;// Periodic costs
         int32 m_updateTargetMapInterval;                    // Timer for UpdateTargetMapOfEffect
 
         uint8 const m_casterLevel;                          // Aura level (store caster level for correct show level dep amount)

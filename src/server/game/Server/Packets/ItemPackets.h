@@ -22,6 +22,8 @@
 #include "Item.h"
 #include "PacketUtilities.h"
 
+struct VoidStorageItem;
+
 namespace WorldPackets
 {
     namespace Item
@@ -34,8 +36,9 @@ namespace WorldPackets
 
         struct ItemInstance
         {
-            void Initalize(::Item const* item);
-            void Initalize(::LootItem const& lootItem);
+            void Initialize(::Item const* item);
+            void Initialize(::LootItem const& lootItem);
+            void Initialize(::VoidStorageItem const* voidItem);
 
             uint32 ItemID = 0;
             uint32 RandomPropertiesSeed = 0;
@@ -224,7 +227,7 @@ namespace WorldPackets
         class AutoEquipItem final : public ClientPacket
         {
         public:
-            AutoEquipItem(WorldPacket&& packet) : ClientPacket(CMSG_AUTOEQUIP_ITEM, std::move(packet)) { }
+            AutoEquipItem(WorldPacket&& packet) : ClientPacket(CMSG_AUTO_EQUIP_ITEM, std::move(packet)) { }
 
             void Read() override;
 
@@ -233,10 +236,22 @@ namespace WorldPackets
             uint8 PackSlot = 0;
         };
 
+        class AutoEquipItemSlot final : public ClientPacket
+        {
+        public:
+            AutoEquipItemSlot(WorldPacket&& packet) : ClientPacket(CMSG_AUTO_EQUIP_ITEM_SLOT, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid Item;
+            uint8 ItemDstSlot = 0;
+            InvUpdate Inv;
+        };
+
         class AutoStoreBagItem final : public ClientPacket
         {
         public:
-            AutoStoreBagItem(WorldPacket&& packet) : ClientPacket(CMSG_AUTOSTORE_BAG_ITEM, std::move(packet)) { }
+            AutoStoreBagItem(WorldPacket&& packet) : ClientPacket(CMSG_AUTO_STORE_BAG_ITEM, std::move(packet)) { }
 
             void Read() override;
 
@@ -256,6 +271,120 @@ namespace WorldPackets
             uint32 Count = 0;
             uint8 SlotNum = 0;
             uint8 ContainerId = 0;
+        };
+
+        class SellResponse final : public ServerPacket
+        {
+        public:
+            SellResponse() : ServerPacket(SMSG_SELL_RESPONSE, 16 + 16 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid VendorGUID;
+            ObjectGuid ItemGUID;
+            SellResult Reason = SELL_ERR_UNK;
+        };
+
+        class ItemPushResult final : public ServerPacket
+        {
+        public:
+            ItemPushResult() : ServerPacket(SMSG_ITEM_PUSH_RESULT, 16 + 1 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 16 + 1 + 1 + 1 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid PlayerGUID;
+            uint8 Slot                      = 0;
+            int32 SlotInBag                 = 0;
+            ItemInstance Item;
+            uint32 WodUnk                   = 0;
+            int32 Quantity                  = 0;
+            int32 QuantityInInventory       = 0;
+            int32 BattlePetBreedID          = 0;
+            uint32 BattlePetBreedQuality    = 0;
+            int32 BattlePetSpeciesID        = 0;
+            int32 BattlePetLevel            = 0;
+            ObjectGuid ItemGUID;
+            bool Pushed                     = false;
+            bool DisplayText                = false;
+            bool Created                    = false;
+            bool IsBonusRoll                = false;
+        };
+
+        class ReadItem final : public ClientPacket
+        {
+        public:
+            ReadItem(WorldPacket&& packet) : ClientPacket(CMSG_READ_ITEM, std::move(packet)) { }
+
+            void Read() override;
+
+            uint8 PackSlot = 0;
+            uint8 Slot = 0;
+        };
+
+        class ReadItemResultFailed final : public ServerPacket
+        {
+        public:
+            ReadItemResultFailed() : ServerPacket(SMSG_READ_ITEM_RESULT_FAILED, 16 + 1 + 4) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Item;
+            uint8 Subcode   = 0;
+            uint32 Delay    = 0;
+        };
+
+        class ReadItemResultOK final : public ServerPacket
+        {
+        public:
+            ReadItemResultOK() : ServerPacket(SMSG_READ_ITEM_RESULT_OK, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Item;
+        };
+
+        class WrapItem final : public ClientPacket
+        {
+        public:
+            WrapItem(WorldPacket&& packet) : ClientPacket(CMSG_WRAP_ITEM, std::move(packet)) { }
+
+            void Read() override;
+
+            InvUpdate Inv;
+        };
+
+        class CancelTempEnchantment final : public ClientPacket
+        {
+        public:
+            CancelTempEnchantment(WorldPacket&& packet) : ClientPacket(CMSG_CANCEL_TEMP_ENCHANTMENT, std::move(packet)) { }
+
+            void Read() override;
+
+            int32 Slot = 0;
+        };
+
+        class ItemCooldown final : public ServerPacket
+        {
+        public:
+            ItemCooldown() : ServerPacket(SMSG_ITEM_COOLDOWN, 20) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid ItemGuid;
+            uint32 SpellID = 0;
+        };
+
+        class ItemEnchantTimeUpdate final : public ServerPacket
+        {
+        public:
+            ItemEnchantTimeUpdate() : ServerPacket(SMSG_ITEM_ENCHANT_TIME_UPDATE, 40) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid OwnerGuid;
+            ObjectGuid ItemGuid;
+            uint32 DurationLeft = 0;
+            uint32 Slot = 0;
         };
 
         ByteBuffer& operator>>(ByteBuffer& data, InvUpdate& invUpdate);

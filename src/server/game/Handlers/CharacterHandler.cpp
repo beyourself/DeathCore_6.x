@@ -21,7 +21,6 @@
 #include "ArenaTeamMgr.h"
 #include "AuthenticationPackets.h"
 #include "Battleground.h"
-#include "BattlegroundPackets.h"
 #include "BattlenetServerManager.h"
 #include "CalendarMgr.h"
 #include "CharacterPackets.h"
@@ -237,6 +236,26 @@ bool LoginQueryHolder::Initialize()
     stmt->setUInt64(0, lowGuid);
     res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_CURRENCY, stmt);
 
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_GARRISON);
+    stmt->setUInt64(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_GARRISON, stmt);
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_GARRISON_BLUEPRINTS);
+    stmt->setUInt64(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_GARRISON_BLUEPRINTS, stmt);
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_GARRISON_BUILDINGS);
+    stmt->setUInt64(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_GARRISON_BUILDINGS, stmt);
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_GARRISON_FOLLOWERS);
+    stmt->setUInt64(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_GARRISON_FOLLOWERS, stmt);
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_GARRISON_FOLLOWER_ABILITIES);
+    stmt->setUInt64(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_GARRISON_FOLLOWER_ABILITIES, stmt);
+
     return res;
 }
 
@@ -256,6 +275,20 @@ void WorldSession::HandleCharEnum(PreparedQueryResult result)
             WorldPackets::Character::EnumCharactersResult::CharacterInfo charInfo(fields);
 
             TC_LOG_INFO("network", "Loading char guid %s from account %u.", charInfo.Guid.ToString().c_str(), GetAccountId());
+
+            if (!Player::ValidateAppearance(charInfo.Race, charInfo.Class, charInfo.Sex, charInfo.HairStyle, charInfo.HairColor, charInfo.Face, charInfo.FacialHair, charInfo.Skin))
+            {
+                TC_LOG_ERROR("entities.player.loading", "Player %s has wrong Appearance values (Hair/Skin/Color), forcing recustomize", charInfo.Guid.ToString().c_str());
+
+                if (!(charInfo.CustomizationFlag == CHAR_CUSTOMIZE_FLAG_CUSTOMIZE))
+                {
+                    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
+                    stmt->setUInt16(0, uint16(AT_LOGIN_CUSTOMIZE));
+                    stmt->setUInt64(1, charInfo.Guid.GetCounter());
+                    CharacterDatabase.Execute(stmt);
+                    charInfo.CustomizationFlag = CHAR_CUSTOMIZE_FLAG_CUSTOMIZE;
+                }
+            }
 
             // Do not allow locked characters to login
             if (!(charInfo.Flags & (CHARACTER_FLAG_LOCKED_FOR_TRANSFER | CHARACTER_FLAG_LOCKED_BY_BILLING)))
@@ -334,7 +367,7 @@ void WorldSession::HandleCharUndeleteEnumOpcode(WorldPackets::Character::EnumCha
     _charEnumCallback.SetFutureResult(CharacterDatabase.AsyncQuery(stmt));
 }
 
-void WorldSession::HandleCharCreateOpcode(WorldPackets::Character::CreateChar& charCreate)
+void WorldSession::HandleCharCreateOpcode(WorldPackets::Character::CreateCharacter& charCreate)
 {
     if (!HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_TEAMMASK))
     {
@@ -342,13 +375,16 @@ void WorldSession::HandleCharCreateOpcode(WorldPackets::Character::CreateChar& c
         {
             bool disabled = false;
 
-            switch (Player::TeamForRace(charCreate.CreateInfo->Race))
+            switch (Player::TeamIdForRace(charCreate.CreateInfo->Race))
             {
-                case ALLIANCE:
+                case TEAM_ALLIANCE:
                     disabled = (mask & (1 << 0)) != 0;
                     break;
-                case HORDE:
+                case TEAM_HORDE:
                     disabled = (mask & (1 << 1)) != 0;
+                    break;
+                case TEAM_NEUTRAL:
+                    disabled = (mask & (1 << 2)) != 0;
                     break;
             }
 
@@ -655,7 +691,7 @@ void WorldSession::HandleCharCreateCallback(PreparedQueryResult result, WorldPac
 
             Player newChar(this);
             newChar.GetMotionMaster()->Initialize();
-            if (!newChar.Create(sObjectMgr->GetGenerator<HighGuid::Player>()->Generate(), createInfo))
+            if (!newChar.Create(sObjectMgr->GetGenerator<HighGuid::Player>().Generate(), createInfo))
             {
                 // Player not create (race/class/etc problem?)
                 newChar.CleanupsBeforeDelete();
@@ -689,6 +725,25 @@ void WorldSession::HandleCharCreateCallback(PreparedQueryResult result, WorldPac
 
             LoginDatabase.CommitTransaction(trans);
 
+            if (createInfo->TemplateSet)
+            {
+                if (HasPermission(rbac::RBAC_PERM_USE_CHARACTER_TEMPLATES))
+                {
+                    if (CharacterTemplate const* charTemplate = sObjectMgr->GetCharacterTemplate(*createInfo->TemplateSet))
+                    {
+                        if (charTemplate->Level != 1)
+                        {
+                            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_LEVEL);
+                            stmt->setUInt8(0, uint8(charTemplate->Level));
+                            stmt->setUInt64(1, newChar.GetGUID().GetCounter());
+                            CharacterDatabase.Execute(stmt);
+                        }
+                    }
+                }
+                else
+                    TC_LOG_WARN("cheat", "Account: %u (IP: %s) tried to use a character template without given permission. Possible cheating attempt.", GetAccountId(), GetRemoteAddress().c_str());
+            }
+
             SendCharCreate(CHAR_CREATE_SUCCESS);
 
             TC_LOG_INFO("entities.player.character", "Account: %u (IP: %s) Create Character: %s %s", GetAccountId(), GetRemoteAddress().c_str(), createInfo->Name.c_str(), newChar.GetGUID().ToString().c_str());
@@ -702,7 +757,7 @@ void WorldSession::HandleCharCreateCallback(PreparedQueryResult result, WorldPac
     }
 }
 
-void WorldSession::HandleCharDeleteOpcode(WorldPackets::Character::DeleteChar& charDelete)
+void WorldSession::HandleCharDeleteOpcode(WorldPackets::Character::CharDelete& charDelete)
 {
     // Initiating
     uint32 initAccountId = GetAccountId();
@@ -794,17 +849,7 @@ void WorldSession::HandlePlayerLoginOpcode(WorldPackets::Character::PlayerLogin&
         return;
     }
 
-    boost::system::error_code ignored_error;
-    boost::asio::ip::tcp::endpoint instanceAddress = realm.GetAddressForClient(boost::asio::ip::address::from_string(GetRemoteAddress(), ignored_error));
-    instanceAddress.port(sWorld->getIntConfig(CONFIG_PORT_INSTANCE));
-
-    WorldPackets::Auth::ConnectTo connectTo;
-    connectTo.Key = MAKE_PAIR64(GetAccountId(), CONNECTION_TYPE_INSTANCE);
-    connectTo.Serial = 1;
-    connectTo.Payload.Where = instanceAddress;
-    connectTo.Con = CONNECTION_TYPE_INSTANCE;
-
-    SendPacket(connectTo.Write());
+    SendConnectToInstance(WorldPackets::Auth::ConnectToSerial::WorldAttempt1);
 }
 
 void WorldSession::HandleContinuePlayerLogin()
@@ -823,7 +868,21 @@ void WorldSession::HandleContinuePlayerLogin()
         return;
     }
 
+    SendPacket(WorldPackets::Auth::ResumeComms(CONNECTION_TYPE_INSTANCE).Write());
+
     _charLoginCallback = CharacterDatabase.DelayQueryHolder(holder);
+}
+
+void WorldSession::AbortLogin(WorldPackets::Character::LoginFailureReason reason)
+{
+    if (!PlayerLoading() || GetPlayer())
+    {
+        KickPlayer();
+        return;
+    }
+
+    m_playerLoading.Clear();
+    SendPacket(WorldPackets::Character::CharacterLoginFailed(reason).Write());
 }
 
 void WorldSession::HandleLoadScreenOpcode(WorldPackets::Character::LoadingScreenNotify& /*loadingScreenNotify*/)
@@ -919,9 +978,9 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
         pCurrChar->SetGuildLevel(0);
     }
 
-    WorldPacket data(SMSG_LEARNED_DANCE_MOVES, 4+4);
-    data << uint64(0);
-    SendPacket(&data);
+    //WorldPacket data(SMSG_LEARNED_DANCE_MOVES, 4+4);
+    //data << uint64(0);
+    //SendPacket(&data);
 
     WorldPackets::Query::HotfixNotifyBlob hotfixInfo;
     hotfixInfo.Hotfixes = sDB2Manager.GetHotfixData();
@@ -1036,6 +1095,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_RESET_TALENTS))
     {
         pCurrChar->ResetTalents(true);
+        pCurrChar->ResetTalentSpecialization();
         pCurrChar->SendTalentsInfoData(); // original talents send already in to SendInitialPacketsBeforeAddToMap, resend reset state
         SendNotification(LANG_RESET_TALENTS);
     }
@@ -1086,35 +1146,44 @@ void WorldSession::SendFeatureSystemStatus()
     features.ComplaintStatus = 2;
     features.ScrollOfResurrectionRequestsRemaining = 1;
     features.ScrollOfResurrectionMaxRequestsPerDay = 1;
+    features.UnkInt27 = 60;
+    features.TwitterMsTillCanPost = 20;
     features.CfgRealmID = 2;
     features.CfgRealmRecID = 0;
+    features.TokenPollTimeSeconds = 300;
+    features.TokenRedeemIndex = 0;
     features.VoiceEnabled = false;
     features.BrowserEnabled = false; // Has to be false, otherwise client will crash if "Customer Support" is opened
 
-    features.EuropaTicketSystemStatus.HasValue = true;
-    features.EuropaTicketSystemStatus.Value.ThrottleState.MaxTries = 5;
-    features.EuropaTicketSystemStatus.Value.ThrottleState.PerMilliseconds = 5;
-    features.EuropaTicketSystemStatus.Value.ThrottleState.TryCount = 0;
-    features.EuropaTicketSystemStatus.Value.ThrottleState.LastResetTimeBeforeNow = time(nullptr) - 5000;
+    features.EuropaTicketSystemStatus = boost::in_place();
+    features.EuropaTicketSystemStatus->ThrottleState.MaxTries = 10;
+    features.EuropaTicketSystemStatus->ThrottleState.PerMilliseconds = 60000;
+    features.EuropaTicketSystemStatus->ThrottleState.TryCount = 1;
+    features.EuropaTicketSystemStatus->ThrottleState.LastResetTimeBeforeNow = 111111;
+    features.ComplaintStatus = 0;
+    features.TutorialsEnabled = true;
+    features.UnkBit90 = true;
     /// END OF DUMMY VALUES
 
-    features.EuropaTicketSystemStatus.Value.SubmitBugEnabled = sWorld->getBoolConfig(CONFIG_TICKET_SUBMIT_BUG);
-    features.EuropaTicketSystemStatus.Value.TicketSystemEnabled = sWorld->getBoolConfig(CONFIG_TICKET_SUBMIT_TICKET);
+    features.EuropaTicketSystemStatus->TicketsEnabled = sWorld->getBoolConfig(CONFIG_SUPPORT_TICKETS_ENABLED);
+    features.EuropaTicketSystemStatus->BugsEnabled = sWorld->getBoolConfig(CONFIG_SUPPORT_BUGS_ENABLED);
+    features.EuropaTicketSystemStatus->ComplaintsEnabled = sWorld->getBoolConfig(CONFIG_SUPPORT_COMPLAINTS_ENABLED);
+    features.EuropaTicketSystemStatus->SuggestionsEnabled = sWorld->getBoolConfig(CONFIG_SUPPORT_SUGGESTIONS_ENABLED);
+
     features.CharUndeleteEnabled = sWorld->getBoolConfig(CONFIG_FEATURE_SYSTEM_CHARACTER_UNDELETE_ENABLED);
     features.BpayStoreEnabled = sWorld->getBoolConfig(CONFIG_FEATURE_SYSTEM_BPAY_STORE_ENABLED);
 
     SendPacket(features.Write());
 }
 
-void WorldSession::HandleSetFactionAtWar(WorldPacket& recvData)
+void WorldSession::HandleSetFactionAtWar(WorldPackets::Character::SetFactionAtWar& packet)
 {
-    uint32 repListID;
-    uint8  flag;
+    GetPlayer()->GetReputationMgr().SetAtWar(packet.FactionIndex, true);
+}
 
-    recvData >> repListID;
-    recvData >> flag;
-
-    GetPlayer()->GetReputationMgr().SetAtWar(repListID, flag != 0);
+void WorldSession::HandleSetFactionNotAtWar(WorldPackets::Character::SetFactionNotAtWar& packet)
+{
+    GetPlayer()->GetReputationMgr().SetAtWar(packet.FactionIndex, false);
 }
 
 //I think this function is never used :/ I dunno, but i guess this opcode not exists
@@ -1155,36 +1224,35 @@ void WorldSession::HandleTutorialFlag(WorldPackets::Misc::TutorialSetFlag& packe
     }
 }
 
-void WorldSession::HandleSetWatchedFactionOpcode(WorldPacket& recvData)
+void WorldSession::HandleSetWatchedFactionOpcode(WorldPackets::Character::SetWatchedFaction& packet)
 {
-    TC_LOG_DEBUG("network", "WORLD: Received CMSG_SET_WATCHED_FACTION");
-    uint32 fact;
-    recvData >> fact;
-    GetPlayer()->SetUInt32Value(PLAYER_FIELD_WATCHED_FACTION_INDEX, fact);
+    GetPlayer()->SetUInt32Value(PLAYER_FIELD_WATCHED_FACTION_INDEX, packet.FactionIndex);
 }
 
-void WorldSession::HandleSetFactionInactiveOpcode(WorldPacket& recvData)
+void WorldSession::HandleSetFactionInactiveOpcode(WorldPackets::Character::SetFactionInactive& packet)
 {
-    TC_LOG_DEBUG("network", "WORLD: Received CMSG_SET_FACTION_INACTIVE");
-    uint32 replistid;
-    uint8 inactive;
-    recvData >> replistid >> inactive;
-
-    _player->GetReputationMgr().SetInactive(replistid, inactive != 0);
+    _player->GetReputationMgr().SetInactive(packet.Index, packet.State);
 }
 
-void WorldSession::HandleShowingHelmOpcode(WorldPacket& recvData)
+void WorldSession::HandleRequestForcedReactionsOpcode(WorldPackets::Reputation::RequestForcedReactions& /*requestForcedReactions*/)
 {
-    TC_LOG_DEBUG("network", "CMSG_SHOWING_HELM for %s", _player->GetName().c_str());
-    recvData.read_skip<uint8>(); // unknown, bool?
-    _player->ToggleFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_HELM);
+    _player->GetReputationMgr().SendForceReactions();
 }
 
-void WorldSession::HandleShowingCloakOpcode(WorldPacket& recvData)
+void WorldSession::HandleShowingHelmOpcode(WorldPackets::Character::ShowingHelm& packet)
 {
-    TC_LOG_DEBUG("network", "CMSG_SHOWING_CLOAK for %s", _player->GetName().c_str());
-    recvData.read_skip<uint8>(); // unknown, bool?
-    _player->ToggleFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_CLOAK);
+    if (packet.ShowHelm)
+        _player->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_HELM);
+    else
+        _player->SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_HELM);
+}
+
+void WorldSession::HandleShowingCloakOpcode(WorldPackets::Character::ShowingCloak& packet)
+{
+    if (packet.ShowCloak)
+        _player->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_CLOAK);
+    else
+        _player->SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_CLOAK);
 }
 
 void WorldSession::HandleCharRenameOpcode(WorldPackets::Character::CharacterRenameRequest& request)
@@ -1353,26 +1421,30 @@ void WorldSession::HandleSetPlayerDeclinedNames(WorldPacket& recvData)
     SendSetPlayerDeclinedNamesResult(DECLINED_NAMES_RESULT_SUCCESS, guid);
 }
 
-void WorldSession::HandleAlterAppearance(WorldPacket& recvData)
+void WorldSession::HandleAlterAppearance(WorldPackets::Character::AlterApperance& packet)
 {
-    TC_LOG_DEBUG("network", "CMSG_ALTER_APPEARANCE");
-
-    uint32 Hair, Color, FacialHair, SkinColor;
-    recvData >> Hair >> Color >> FacialHair >> SkinColor;
-
-    BarberShopStyleEntry const* bs_hair = sBarberShopStyleStore.LookupEntry(Hair);
-
+    BarberShopStyleEntry const* bs_hair = sBarberShopStyleStore.LookupEntry(packet.NewHairStyle);
     if (!bs_hair || bs_hair->Type != 0 || bs_hair->Race != _player->getRace() || bs_hair->Sex != _player->getGender())
         return;
 
-    BarberShopStyleEntry const* bs_facialHair = sBarberShopStyleStore.LookupEntry(FacialHair);
-
+    BarberShopStyleEntry const* bs_facialHair = sBarberShopStyleStore.LookupEntry(packet.NewFacialHair);
     if (!bs_facialHair || bs_facialHair->Type != 2 || bs_facialHair->Race != _player->getRace() || bs_facialHair->Sex != _player->getGender())
         return;
 
-    BarberShopStyleEntry const* bs_skinColor = sBarberShopStyleStore.LookupEntry(SkinColor);
-
+    BarberShopStyleEntry const* bs_skinColor = sBarberShopStyleStore.LookupEntry(packet.NewSkinColor);
     if (bs_skinColor && (bs_skinColor->Type != 3 || bs_skinColor->Race != _player->getRace() || bs_skinColor->Sex != _player->getGender()))
+        return;
+
+    BarberShopStyleEntry const* bs_face = sBarberShopStyleStore.LookupEntry(packet.NewFace);
+    if (bs_face && (bs_face->Type != 4 || bs_face->Race != _player->getRace() || bs_face->Sex != _player->getGender()))
+        return;
+
+    if (!Player::ValidateAppearance(_player->getRace(), _player->getClass(), _player->getGender(),
+        bs_hair->Data,
+        packet.NewHairColor,
+        bs_face ? bs_face->Data : _player->GetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_FACE_ID),
+        bs_facialHair->Data,
+        bs_skinColor ? bs_skinColor->Data : _player->GetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_SKIN_ID)))
         return;
 
     GameObject* go = _player->FindNearestGameObjectOfType(GAMEOBJECT_TYPE_BARBER_CHAIR, 5.0f);
@@ -1382,13 +1454,13 @@ void WorldSession::HandleAlterAppearance(WorldPacket& recvData)
         return;
     }
 
-    if (_player->GetStandState() != UNIT_STAND_STATE_SIT_LOW_CHAIR + go->GetGOInfo()->barberChair.chairheight)
+    if (_player->GetStandState() != UnitStandStateType(UNIT_STAND_STATE_SIT_LOW_CHAIR + go->GetGOInfo()->barberChair.chairheight))
     {
         SendBarberShopResult(BARBER_SHOP_RESULT_NOT_ON_CHAIR);
         return;
     }
 
-    uint32 cost = _player->GetBarberShopCost(bs_hair->Data, Color, bs_facialHair->Data, bs_skinColor);
+    uint32 cost = _player->GetBarberShopCost(bs_hair, packet.NewHairColor, bs_facialHair, bs_skinColor, bs_face);
 
     // 0 - ok
     // 1, 3 - not enough money
@@ -1405,10 +1477,12 @@ void WorldSession::HandleAlterAppearance(WorldPacket& recvData)
     _player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GOLD_SPENT_AT_BARBER, cost);
 
     _player->SetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_HAIR_STYLE_ID, uint8(bs_hair->Data));
-    _player->SetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_HAIR_COLOR_ID, uint8(Color));
+    _player->SetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_HAIR_COLOR_ID, uint8(packet.NewHairColor));
     _player->SetByteValue(PLAYER_BYTES_2, PLAYER_BYTES_2_OFFSET_FACIAL_STYLE, uint8(bs_facialHair->Data));
     if (bs_skinColor)
         _player->SetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_SKIN_ID, uint8(bs_skinColor->Data));
+    if (bs_face)
+        _player->SetByteValue(PLAYER_BYTES, PLAYER_BYTES_OFFSET_FACE_ID, uint8(bs_face->Data));
 
     _player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_VISIT_BARBER_SHOP, 1);
 
@@ -1467,8 +1541,17 @@ void WorldSession::HandleCharCustomizeCallback(PreparedQueryResult result, World
     Field* fields = result->Fetch();
 
     std::string oldName = fields[0].GetString();
-    uint16 atLoginFlags = fields[1].GetUInt16();
-    uint32 playerBytes2 = fields[2].GetUInt32();
+    uint8 plrRace = fields[1].GetUInt8();
+    uint8 plrClass = fields[2].GetUInt8();
+    uint8 plrGender = fields[3].GetUInt8();
+    uint16 atLoginFlags = fields[4].GetUInt16();
+    uint32 playerBytes2 = fields[5].GetUInt32();
+
+    if (!Player::ValidateAppearance(plrRace, plrClass, plrGender, customizeInfo->HairStyleID, customizeInfo->HairColorID, customizeInfo->FaceID, customizeInfo->FacialHairStyleID, customizeInfo->SkinID, true))
+    {
+        SendCharCustomize(CHAR_CREATE_ERROR, customizeInfo);
+        return;
+    }
 
     if (!(atLoginFlags & AT_LOGIN_CUSTOMIZE))
     {
@@ -1558,8 +1641,6 @@ void WorldSession::HandleCharCustomizeCallback(PreparedQueryResult result, World
 
 void WorldSession::HandleEquipmentSetSave(WorldPackets::EquipmentSet::SaveEquipmentSet& packet)
 {
-    TC_LOG_DEBUG("network", "CMSG_EQUIPMENT_SET_SAVE");
-
     if (packet.Set.SetID >= MAX_EQUIPMENT_SET_INDEX) // client set slots amount
         return;
 
@@ -1588,43 +1669,31 @@ void WorldSession::HandleEquipmentSetSave(WorldPackets::EquipmentSet::SaveEquipm
     _player->SetEquipmentSet(std::move(packet.Set));
 }
 
-void WorldSession::HandleEquipmentSetDelete(WorldPacket& recvData)
+void WorldSession::HandleDeleteEquipmentSet(WorldPackets::EquipmentSet::DeleteEquipmentSet& packet)
 {
-    TC_LOG_DEBUG("network", "CMSG_EQUIPMENT_SET_DELETE");
-
-    uint64 setGuid;
-    recvData.ReadPackedUInt64(setGuid);
-
-    _player->DeleteEquipmentSet(setGuid);
+    _player->DeleteEquipmentSet(packet.ID);
 }
 
-void WorldSession::HandleEquipmentSetUse(WorldPacket& recvData)
+void WorldSession::HandleUseEquipmentSet(WorldPackets::EquipmentSet::UseEquipmentSet& packet)
 {
-    TC_LOG_DEBUG("network", "CMSG_EQUIPMENT_SET_USE");
-
     ObjectGuid ignoredItemGuid;
     ignoredItemGuid.SetRawValue(0, 1);
-    for (uint32 i = 0; i < EQUIPMENT_SLOT_END; ++i)
+
+    for (uint8 i = 0; i < EQUIPMENT_SLOT_END; ++i)
     {
-        ObjectGuid itemGuid;
-        recvData >> itemGuid.ReadAsPacked();
-
-        uint8 srcbag, srcslot;
-        recvData >> srcbag >> srcslot;
-
-        TC_LOG_DEBUG("entities.player.items", "%s: srcbag %u, srcslot %u", itemGuid.ToString().c_str(), srcbag, srcslot);
+        TC_LOG_DEBUG("entities.player.items", "%s: ContainerSlot: %u, Slot: %u", packet.Items[i].Item.ToString().c_str(), packet.Items[i].ContainerSlot, packet.Items[i].Slot);
 
         // check if item slot is set to "ignored" (raw value == 1), must not be unequipped then
-        if (itemGuid == ignoredItemGuid)
+        if (packet.Items[i].Item == ignoredItemGuid)
             continue;
 
         // Only equip weapons in combat
         if (_player->IsInCombat() && i != EQUIPMENT_SLOT_MAINHAND && i != EQUIPMENT_SLOT_OFFHAND && i != EQUIPMENT_SLOT_RANGED)
             continue;
 
-        Item* item = _player->GetItemByGuid(itemGuid);
+        Item* item = _player->GetItemByGuid(packet.Items[i].Item);
 
-        uint16 dstpos = i | (INVENTORY_SLOT_BAG_0 << 8);
+        uint16 dstPos = i | (INVENTORY_SLOT_BAG_0 << 8);
 
         if (!item)
         {
@@ -1632,28 +1701,27 @@ void WorldSession::HandleEquipmentSetUse(WorldPacket& recvData)
             if (!uItem)
                 continue;
 
-            ItemPosCountVec sDest;
-            InventoryResult msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, sDest, uItem, false);
-            if (msg == EQUIP_ERR_OK)
+            ItemPosCountVec itemPosCountVec;
+            InventoryResult inventoryResult = _player->CanStoreItem(NULL_BAG, NULL_SLOT, itemPosCountVec, uItem, false);
+            if (inventoryResult == EQUIP_ERR_OK)
             {
                 _player->RemoveItem(INVENTORY_SLOT_BAG_0, i, true);
-                _player->StoreItem(sDest, uItem, true);
+                _player->StoreItem(itemPosCountVec, uItem, true);
             }
             else
-                _player->SendEquipError(msg, uItem, NULL);
-
+                _player->SendEquipError(inventoryResult, uItem,  NULL);
             continue;
         }
 
-        if (item->GetPos() == dstpos)
+        if (item->GetPos() == dstPos)
             continue;
 
-        _player->SwapItem(item->GetPos(), dstpos);
+        _player->SwapItem(item->GetPos(), dstPos);
     }
 
-    WorldPacket data(SMSG_USE_EQUIPMENT_SET_RESULT, 1);
-    data << uint8(0);                                       // 4 - equipment swap failed - inventory is full
-    SendPacket(&data);
+    WorldPackets::EquipmentSet::UseEquipmentSetResult result;
+    result.Reason = 0; // 4 - equipment swap failed - inventory is full
+    SendPacket(result.Write());
 }
 
 void WorldSession::HandleCharRaceOrFactionChangeOpcode(WorldPackets::Character::CharRaceOrFactionChange& packet)
@@ -1721,7 +1789,7 @@ void WorldSession::HandleCharRaceOrFactionChangeCallback(PreparedQueryResult res
         return;
     }
 
-    if (factionChangeInfo->FactionChange == (Player::TeamIdForRace(oldRace) != newTeamId))
+    if (factionChangeInfo->FactionChange == (Player::TeamIdForRace(oldRace) == newTeamId))
     {
         SendCharFactionChange(factionChangeInfo->FactionChange ? CHAR_CREATE_CHARACTER_SWAP_FACTION : CHAR_CREATE_CHARACTER_RACE_ONLY, factionChangeInfo);
         return;
@@ -1804,45 +1872,45 @@ void WorldSession::HandleCharRaceOrFactionChangeCallback(PreparedQueryResult res
 
     /// Customize
     {
-        if (factionChangeInfo->SkinID.HasValue)
+        if (factionChangeInfo->SkinID)
         {
             playerBytes &= ~uint32(0xFF);
-            playerBytes |= factionChangeInfo->SkinID.Value;
+            playerBytes |= *factionChangeInfo->SkinID;
         }
         else
-            factionChangeInfo->SkinID.Set(uint8(playerBytes & 0xFF));
+            factionChangeInfo->SkinID = uint8(playerBytes & 0xFF);
 
-        if (factionChangeInfo->FaceID.HasValue)
+        if (factionChangeInfo->FaceID)
         {
             playerBytes &= ~(uint32(0xFF) << 8);
-            playerBytes |= uint32(factionChangeInfo->FaceID.Value) << 8;
+            playerBytes |= uint32(*factionChangeInfo->FaceID) << 8;
         }
         else
-            factionChangeInfo->FaceID.Set(uint8((playerBytes2 >> 8) & 0xFF));
+            factionChangeInfo->FaceID = uint8((playerBytes2 >> 8) & 0xFF);
 
-        if (factionChangeInfo->HairStyleID.HasValue)
+        if (factionChangeInfo->HairStyleID)
         {
             playerBytes &= ~(uint32(0xFF) << 16);
-            playerBytes |= uint32(factionChangeInfo->HairStyleID.Value) << 16;
+            playerBytes |= uint32(*factionChangeInfo->HairStyleID) << 16;
         }
         else
-            factionChangeInfo->HairStyleID.Set(uint8((playerBytes2 >> 16) & 0xFF));
+            factionChangeInfo->HairStyleID = uint8((playerBytes2 >> 16) & 0xFF);
 
-        if (factionChangeInfo->HairColorID.HasValue)
+        if (factionChangeInfo->HairColorID)
         {
             playerBytes &= ~(uint32(0xFF) << 24);
-            playerBytes |= uint32(factionChangeInfo->HairColorID.Value) << 24;
+            playerBytes |= uint32(*factionChangeInfo->HairColorID) << 24;
         }
         else
-            factionChangeInfo->HairColorID.Set(uint8((playerBytes2 >> 24) & 0xFF));
+            factionChangeInfo->HairColorID = uint8((playerBytes2 >> 24) & 0xFF);
 
-        if (factionChangeInfo->FacialHairStyleID.HasValue)
+        if (factionChangeInfo->FacialHairStyleID)
         {
             playerBytes2 &= ~0xFF;
-            playerBytes2 |= factionChangeInfo->FacialHairStyleID.Value;
+            playerBytes2 |= *factionChangeInfo->FacialHairStyleID;
         }
         else
-            factionChangeInfo->FacialHairStyleID.Set(uint8(playerBytes2 & 0xFF));
+            factionChangeInfo->FacialHairStyleID = int8(playerBytes2 & 0xFF);
 
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_GENDER_PLAYERBYTES);
         stmt->setUInt8(0, factionChangeInfo->SexID);
@@ -2303,7 +2371,7 @@ void WorldSession::HandleOpeningCinematic(WorldPacket& /*recvData*/)
     }
 }
 
-void WorldSession::HandleGetUndeleteCooldownStatus(WorldPackets::Character::GetUndeleteCooldownStatus& /*getCooldown*/)
+void WorldSession::HandleGetUndeleteCooldownStatus(WorldPackets::Character::GetUndeleteCharacterCooldownStatus& /*getCooldown*/)
 {
     /// empty result to force wait
     PreparedQueryResultPromise result;
@@ -2332,8 +2400,9 @@ void WorldSession::HandleUndeleteCooldownStatusCallback(PreparedQueryResult resu
             if (result)
             {
                 uint32 lastUndelete = result->Fetch()[0].GetUInt32();
-                if (lastUndelete)
-                    cooldown = uint32(std::max<int32>(0, int32(lastUndelete) + maxCooldown - time(nullptr)));
+                uint32 now = uint32(time(nullptr));
+                if (lastUndelete + maxCooldown > now)
+                    cooldown = std::max<uint32>(0, lastUndelete + maxCooldown - now);
             }
 
             SendUndeleteCooldownStatusResponse(cooldown, maxCooldown);
@@ -2478,7 +2547,7 @@ void WorldSession::HandleCharUndeleteCallback(PreparedQueryResult result, WorldP
 
 void WorldSession::SendCharCreate(ResponseCodes result)
 {
-    WorldPackets::Character::CharacterCreateResponse response;
+    WorldPackets::Character::CreateChar response;
     response.Code = result;
 
     SendPacket(response.Write());
@@ -2486,7 +2555,7 @@ void WorldSession::SendCharCreate(ResponseCodes result)
 
 void WorldSession::SendCharDelete(ResponseCodes result)
 {
-    WorldPackets::Character::CharacterDeleteResponse response;
+    WorldPackets::Character::DeleteChar response;
     response.Code = result;
 
     SendPacket(response.Write());
@@ -2498,32 +2567,25 @@ void WorldSession::SendCharRename(ResponseCodes result, WorldPackets::Character:
     packet.Result = result;
     packet.Name = renameInfo->NewName;
     if (result == RESPONSE_SUCCESS)
-        packet.Guid.Set(renameInfo->Guid);
+        packet.Guid = renameInfo->Guid;
 
     SendPacket(packet.Write());
 }
 
 void WorldSession::SendCharCustomize(ResponseCodes result, WorldPackets::Character::CharCustomizeInfo const* customizeInfo)
 {
-    /// @todo: fix 6.x implementation
-    (void)result;
-    (void)customizeInfo;
-    /*
-    WorldPacket data(SMSG_CHAR_CUSTOMIZE, 1 + 8 + customizeInfo.NewName.size() + 1 + 6);
-    data << uint8(result);
     if (result == RESPONSE_SUCCESS)
     {
-        data << customizeInfo.Guid;
-        data << customizeInfo.NewName;
-        data << uint8(customizeInfo.Gender);
-        data << uint8(customizeInfo.Skin);
-        data << uint8(customizeInfo.Face);
-        data << uint8(customizeInfo.HairStyle);
-        data << uint8(customizeInfo.HairColor);
-        data << uint8(customizeInfo.FacialHair);
+        WorldPackets::Character::CharCustomizeResponse response(customizeInfo);
+        SendPacket(response.Write());
     }
-    SendPacket(&data);
-    */
+    else
+    {
+        WorldPackets::Character::CharCustomizeFailed failed;
+        failed.Result = uint8(result);
+        failed.CharGUID = customizeInfo->CharGUID;
+        SendPacket(failed.Write());
+    }
 }
 
 void WorldSession::SendCharFactionChange(ResponseCodes result, WorldPackets::Character::CharRaceOrFactionChangeInfo const* factionChangeInfo)
@@ -2534,15 +2596,15 @@ void WorldSession::SendCharFactionChange(ResponseCodes result, WorldPackets::Cha
 
     if (result == RESPONSE_SUCCESS)
     {
-        packet.Display.HasValue = true;
-        packet.Display.Value.Name = factionChangeInfo->Name;
-        packet.Display.Value.SexID = factionChangeInfo->SexID;
-        packet.Display.Value.SkinID = factionChangeInfo->SkinID.Value;
-        packet.Display.Value.HairColorID = factionChangeInfo->HairColorID.Value;
-        packet.Display.Value.HairStyleID = factionChangeInfo->HairStyleID.Value;
-        packet.Display.Value.FacialHairStyleID = factionChangeInfo->FacialHairStyleID.Value;
-        packet.Display.Value.FaceID = factionChangeInfo->FaceID.Value;
-        packet.Display.Value.RaceID = factionChangeInfo->RaceID;
+        packet.Display = boost::in_place();
+        packet.Display->Name = factionChangeInfo->Name;
+        packet.Display->SexID = factionChangeInfo->SexID;
+        packet.Display->SkinID = *factionChangeInfo->SkinID;
+        packet.Display->HairColorID = *factionChangeInfo->HairColorID;
+        packet.Display->HairStyleID = *factionChangeInfo->HairStyleID;
+        packet.Display->FacialHairStyleID = *factionChangeInfo->FacialHairStyleID;
+        packet.Display->FaceID = *factionChangeInfo->FaceID;
+        packet.Display->RaceID = factionChangeInfo->RaceID;
     }
 
     SendPacket(packet.Write());
@@ -2559,9 +2621,9 @@ void WorldSession::SendSetPlayerDeclinedNamesResult(DeclinedNameResult result, O
 
 void WorldSession::SendBarberShopResult(BarberShopResult result)
 {
-    WorldPacket data(SMSG_BARBER_SHOP_RESULT, 4);
-    data << uint32(result);
-    SendPacket(&data);
+    WorldPackets::Character::BarberShopResultServer packet;
+    packet.Result = result;
+    SendPacket(packet.Write());
 }
 
 void WorldSession::SendUndeleteCooldownStatusResponse(uint32 currentCooldown, uint32 maxCooldown)

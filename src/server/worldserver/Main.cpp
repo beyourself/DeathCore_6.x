@@ -44,6 +44,7 @@
 #include "WorldSocketMgr.h"
 #include "BattlenetServerManager.h"
 #include "Realm/Realm.h"
+#include "DatabaseLoader.h"
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #include <boost/asio/io_service.hpp>
@@ -61,8 +62,8 @@ using namespace boost::program_options;
 #ifdef _WIN32
 #include "ServiceWin32.h"
 char serviceName[] = "worldserver";
-char serviceLongName[] = "TrinityCore world service";
-char serviceDescription[] = "TrinityCore World of Warcraft emulator world service";
+char serviceLongName[] = "DeathCore world service";
+char serviceDescription[] = "DeathCore World of Warcraft emulator world service";
 /*
  * -1 - not in service mode
  *  0 - stopped
@@ -97,7 +98,8 @@ void ShutdownThreadPool(std::vector<std::thread>& threadPool);
 bool LoadRealmInfo();
 variables_map GetConsoleArguments(int argc, char** argv, std::string& cfg_file, std::string& cfg_service);
 
-int mainImpl(int argc, char** argv)
+/// Launch the Trinity server
+extern int main(int argc, char** argv)
 {
     std::string configFile = _TRINITY_CORE_CONFIG;
     std::string configService;
@@ -109,11 +111,11 @@ int mainImpl(int argc, char** argv)
 
 #ifdef _WIN32
     if (configService.compare("install") == 0)
-        return WinServiceInstall() == true ? 0 : 1;
+        return WinServiceInstall() ? 0 : 1;
     else if (configService.compare("uninstall") == 0)
-        return WinServiceUninstall() == true ? 0 : 1;
+        return WinServiceUninstall() ? 0 : 1;
     else if (configService.compare("run") == 0)
-        WinServiceRun();
+        return WinServiceRun() ? 0 : 0;
 #endif
 
     std::string configError;
@@ -130,10 +132,23 @@ int mainImpl(int argc, char** argv)
     }
 
     TC_LOG_INFO("server.worldserver", "%s (worldserver-daemon)", _FULLVERSION);
+    TC_LOG_INFO("server.worldserver", " ");
+    TC_LOG_INFO("server.worldserver", " ");
     TC_LOG_INFO("server.worldserver", "<Ctrl-C> to stop.\n");
-	TC_LOG_INFO("server.worldserver", "	D E A T H");
-    TC_LOG_INFO("server.worldserver", "              C O R E 6.X.X");
-    TC_LOG_INFO("server.worldserver", "http://www.noffearrdeathproject.net \n");
+	TC_LOG_INFO("server.worldserver", "██████╗ ███████╗ █████╗ ████████╗██╗  ██╗");
+	TC_LOG_INFO("server.worldserver", "██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██║  ██║");
+	TC_LOG_INFO("server.worldserver", "██║  ██║█████╗  ███████║   ██║   ███████║");
+	TC_LOG_INFO("server.worldserver", "██║  ██║██╔══╝  ██╔══██║   ██║   ██╔══██║");
+	TC_LOG_INFO("server.worldserver", "██████╔╝███████╗██║  ██║   ██║   ██║  ██║");
+	TC_LOG_INFO("server.worldserver", "╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝");
+	TC_LOG_INFO("server.worldserver", "		  ██████╗ ██████╗ ██████╗ ███████╗");
+	TC_LOG_INFO("server.worldserver", "		 ██╔════╝██╔═══██╗██╔══██╗██╔════╝");
+	TC_LOG_INFO("server.worldserver", "		 ██║     ██║   ██║██████╔╝█████╗");  
+	TC_LOG_INFO("server.worldserver", "		 ██║     ██║   ██║██╔══██╗██╔══╝");  
+	TC_LOG_INFO("server.worldserver", "		   ╚██████╗╚██████╔╝██║  ██║███████╗");
+	TC_LOG_INFO("server.worldserver", "  	            ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝");
+	TC_LOG_INFO("server.worldserver", "  Noffearr Death ProjecT 2015(c) Open-Sourced Game Emulation ");
+	TC_LOG_INFO("server.worldserver", "            http://www.noffearrdeathproject.net \n");
     TC_LOG_INFO("server.worldserver", "Using configuration file %s.", configFile.c_str());
     TC_LOG_INFO("server.worldserver", "Using SSL version: %s (library: %s)", OPENSSL_VERSION_TEXT, SSLeay_version(SSLEAY_VERSION));
     TC_LOG_INFO("server.worldserver", "Using Boost version: %i.%i.%i", BOOST_VERSION / 100000, BOOST_VERSION / 100 % 1000, BOOST_VERSION % 100);
@@ -264,10 +279,10 @@ int mainImpl(int argc, char** argv)
     sWorldSocketMgr.StopNetwork();
 
     sInstanceSaveMgr->Unload();
+    sOutdoorPvPMgr->Die();                    // unload it before MapManager
     sMapMgr->UnloadAll();                     // unload all grids (including locked in memory)
     sObjectAccessor->UnloadAll();             // unload 'i_player2corpse' storage and remove from world
     sScriptMgr->Unload();
-    sOutdoorPvPMgr->Die();
 
     // set server offline
     LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag | %u WHERE id = '%d'", REALM_FLAG_OFFLINE, realmHandle.Index);
@@ -299,25 +314,6 @@ int mainImpl(int argc, char** argv)
     return World::GetExitCode();
 }
 
-/// Launch the Trinity server
-extern int main(int argc, char** argv)
-{
-    try
-    {
-        return mainImpl(argc, argv);
-    }
-    catch (std::exception& ex)
-    {
-        std::cerr << "Top-level exception caught:" << ex.what() << "\n";
-
-#ifndef NDEBUG // rethrow exception for the debugger
-        throw;
-#else
-        return 1;
-#endif
-    }
-}
-
 void ShutdownCLIThread(std::thread* cliThread)
 {
     if (cliThread != nullptr)
@@ -336,7 +332,7 @@ void ShutdownCLIThread(std::thread* cliThread)
                 errorBuffer = "Unknown error";
 
             TC_LOG_DEBUG("server.worldserver", "Error cancelling I/O of CliThread, error code %u, detail: %s",
-                errorCode, errorBuffer);
+                uint32(errorCode), errorBuffer);
             LocalFree(errorBuffer);
 
             // send keyboard input to safely unblock the CLI thread
@@ -532,105 +528,16 @@ bool StartDB()
 {
     MySQL::Library_Init();
 
-    std::string dbString;
-    uint8 asyncThreads, synchThreads;
+    // Load databases
+    DatabaseLoader loader("server.worldserver", DatabaseLoader::DATABASE_NONE);
+    loader
+        .AddDatabase(HotfixDatabase, "Hotfix")
+        .AddDatabase(WorldDatabase, "World")
+        .AddDatabase(CharacterDatabase, "Character")
+        .AddDatabase(LoginDatabase, "Login");
 
-    dbString = sConfigMgr->GetStringDefault("WorldDatabaseInfo", "");
-    if (dbString.empty())
-    {
-        TC_LOG_ERROR("server.worldserver", "World database not specified in configuration file");
+    if (!loader.Load())
         return false;
-    }
-
-    asyncThreads = uint8(sConfigMgr->GetIntDefault("WorldDatabase.WorkerThreads", 1));
-    if (asyncThreads < 1 || asyncThreads > 32)
-    {
-        TC_LOG_ERROR("server.worldserver", "World database: invalid number of worker threads specified. "
-            "Please pick a value between 1 and 32.");
-        return false;
-    }
-
-    synchThreads = uint8(sConfigMgr->GetIntDefault("WorldDatabase.SynchThreads", 1));
-    ///- Initialize the world database
-    if (!WorldDatabase.Open(dbString, asyncThreads, synchThreads))
-    {
-        TC_LOG_ERROR("server.worldserver", "Cannot connect to world database %s", dbString.c_str());
-        return false;
-    }
-
-    ///- Get character database info from configuration file
-    dbString = sConfigMgr->GetStringDefault("CharacterDatabaseInfo", "");
-    if (dbString.empty())
-    {
-        TC_LOG_ERROR("server.worldserver", "Character database not specified in configuration file");
-        return false;
-    }
-
-    asyncThreads = uint8(sConfigMgr->GetIntDefault("CharacterDatabase.WorkerThreads", 1));
-    if (asyncThreads < 1 || asyncThreads > 32)
-    {
-        TC_LOG_ERROR("server.worldserver", "Character database: invalid number of worker threads specified. "
-            "Please pick a value between 1 and 32.");
-        return false;
-    }
-
-    synchThreads = uint8(sConfigMgr->GetIntDefault("CharacterDatabase.SynchThreads", 2));
-
-    ///- Initialize the Character database
-    if (!CharacterDatabase.Open(dbString, asyncThreads, synchThreads))
-    {
-        TC_LOG_ERROR("server.worldserver", "Cannot connect to Character database %s", dbString.c_str());
-        return false;
-    }
-
-    ///- Get hotfixes database info from configuration file
-    dbString = sConfigMgr->GetStringDefault("HotfixDatabaseInfo", "");
-    if (dbString.empty())
-    {
-        TC_LOG_ERROR("server.worldserver", "Hotfixes database not specified in configuration file");
-        return false;
-    }
-
-    asyncThreads = uint8(sConfigMgr->GetIntDefault("HotfixDatabase.WorkerThreads", 1));
-    if (asyncThreads < 1 || asyncThreads > 32)
-    {
-        TC_LOG_ERROR("server.worldserver", "Hotfixes database: invalid number of worker threads specified. "
-            "Please pick a value between 1 and 32.");
-        return false;
-    }
-
-    synchThreads = uint8(sConfigMgr->GetIntDefault("HotfixDatabase.SynchThreads", 2));
-
-    ///- Initialize the hotfixes database
-    if (!HotfixDatabase.Open(dbString, asyncThreads, synchThreads))
-    {
-        TC_LOG_ERROR("server.worldserver", "Cannot connect to the hotfix database %s", dbString.c_str());
-        return false;
-    }
-
-    ///- Get login database info from configuration file
-    dbString = sConfigMgr->GetStringDefault("LoginDatabaseInfo", "");
-    if (dbString.empty())
-    {
-        TC_LOG_ERROR("server.worldserver", "Login database not specified in configuration file");
-        return false;
-    }
-
-    asyncThreads = uint8(sConfigMgr->GetIntDefault("LoginDatabase.WorkerThreads", 1));
-    if (asyncThreads < 1 || asyncThreads > 32)
-    {
-        TC_LOG_ERROR("server.worldserver", "Login database: invalid number of worker threads specified. "
-            "Please pick a value between 1 and 32.");
-        return false;
-    }
-
-    synchThreads = uint8(sConfigMgr->GetIntDefault("LoginDatabase.SynchThreads", 1));
-    ///- Initialise the login database
-    if (!LoginDatabase.Open(dbString, asyncThreads, synchThreads))
-    {
-        TC_LOG_ERROR("server.worldserver", "Cannot connect to login database %s", dbString.c_str());
-        return false;
-    }
 
     ///- Get the realm Id from the configuration file
     realmHandle.Index = sConfigMgr->GetIntDefault("RealmID", 0);
@@ -640,6 +547,7 @@ bool StartDB()
         return false;
     }
 
+    // Realm Handles
     QueryResult realmIdQuery = LoginDatabase.PQuery("SELECT `Region`,`Battlegroup` FROM `realmlist` WHERE `id`=%u", realmHandle.Index);
     if (!realmIdQuery)
     {
@@ -712,11 +620,13 @@ variables_map GetConsoleArguments(int argc, char** argv, std::string& configFile
         store(command_line_parser(argc, argv).options(all).allow_unregistered().run(), vm);
         notify(vm);
     }
-    catch (std::exception& e) {
+    catch (std::exception& e)
+    {
         std::cerr << e.what() << "\n";
     }
 
-    if (vm.count("help")) {
+    if (vm.count("help"))
+    {
         std::cout << all << "\n";
     }
 

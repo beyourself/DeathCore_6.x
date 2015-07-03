@@ -283,18 +283,11 @@ inline void Map::_ScriptProcessDoor(Object* source, Object* target, const Script
 
 inline GameObject* Map::_FindGameObject(WorldObject* searchObject, ObjectGuid::LowType guid) const
 {
-    GameObject* gameobject = NULL;
+    auto bounds = searchObject->GetMap()->GetGameObjectBySpawnIdStore().equal_range(guid);
+    if (bounds.first == bounds.second)
+        return nullptr;
 
-    CellCoord p(Trinity::ComputeCellCoord(searchObject->GetPositionX(), searchObject->GetPositionY()));
-    Cell cell(p);
-
-    Trinity::GameObjectWithDbGUIDCheck goCheck(*searchObject, guid);
-    Trinity::GameObjectSearcher<Trinity::GameObjectWithDbGUIDCheck> checker(searchObject, gameobject, goCheck);
-
-    TypeContainerVisitor<Trinity::GameObjectSearcher<Trinity::GameObjectWithDbGUIDCheck>, GridTypeMapContainer > objectChecker(checker);
-    cell.Visit(p, objectChecker, *searchObject->GetMap(), *searchObject, searchObject->GetGridActivationRange());
-
-    return gameobject;
+    return bounds.first->second;
 }
 
 /// Process queued scripts
@@ -321,26 +314,23 @@ void Map::ScriptsProcess()
                     break;
                 case HighGuid::Creature:
                 case HighGuid::Vehicle:
-                    source = HashMapHolder<Creature>::Find(step.sourceGUID);
+                    source = GetCreature(step.sourceGUID);
                     break;
                 case HighGuid::Pet:
-                    source = HashMapHolder<Pet>::Find(step.sourceGUID);
+                    source = GetPet(step.sourceGUID);
                     break;
                 case HighGuid::Player:
                     source = HashMapHolder<Player>::Find(step.sourceGUID);
                     break;
                 case HighGuid::GameObject:
-                    source = HashMapHolder<GameObject>::Find(step.sourceGUID);
+                    source = GetGameObject(step.sourceGUID);
                     break;
                 case HighGuid::Corpse:
-                    source = HashMapHolder<Corpse>::Find(step.sourceGUID);
+                    source = GetCorpse(step.sourceGUID);
                     break;
                 case HighGuid::Transport:
-                {
-                    GameObject* go = HashMapHolder<GameObject>::Find(step.sourceGUID);
-                    source = go ? go->ToTransport() : NULL;
+                    source = GetTransport(step.sourceGUID);
                     break;
-                }
                 default:
                     TC_LOG_ERROR("scripts", "%s source with unsupported high guid %s.",
                         step.script->GetDebugInfo().c_str(), step.sourceGUID.ToString().c_str());
@@ -355,26 +345,23 @@ void Map::ScriptsProcess()
             {
                 case HighGuid::Creature:
                 case HighGuid::Vehicle:
-                    target = HashMapHolder<Creature>::Find(step.targetGUID);
+                    target = GetCreature(step.targetGUID);
                     break;
                 case HighGuid::Pet:
-                    target = HashMapHolder<Pet>::Find(step.targetGUID);
+                    target = GetPet(step.targetGUID);
                     break;
                 case HighGuid::Player:
                     target = HashMapHolder<Player>::Find(step.targetGUID);
                     break;
                 case HighGuid::GameObject:
-                    target = HashMapHolder<GameObject>::Find(step.targetGUID);
+                    target = GetGameObject(step.targetGUID);
                     break;
                 case HighGuid::Corpse:
-                    target = HashMapHolder<Corpse>::Find(step.targetGUID);
+                    target = GetCorpse(step.targetGUID);
                     break;
                 case HighGuid::Transport:
-                {
-                    GameObject* go = HashMapHolder<GameObject>::Find(step.targetGUID);
-                    target = go ? go->ToTransport() : NULL;
+                    target = GetTransport(step.targetGUID);
                     break;
-                }
                 default:
                     TC_LOG_ERROR("scripts", "%s target with unsupported high guid %s.",
                         step.script->GetDebugInfo().c_str(), step.targetGUID.ToString().c_str());
@@ -812,22 +799,16 @@ void Map::ScriptsProcess()
                 }
 
                 Creature* cTarget = NULL;
-                WorldObject* wSource = dynamic_cast <WorldObject*> (source);
-                if (wSource) //using grid searcher
+                auto creatureBounds = _creatureBySpawnIdStore.equal_range(step.script->CallScript.CreatureEntry);
+                if (creatureBounds.first != creatureBounds.second)
                 {
-                    CellCoord p(Trinity::ComputeCellCoord(wSource->GetPositionX(), wSource->GetPositionY()));
-                    Cell cell(p);
+                    // Prefer alive (last respawned) creature
+                    auto creatureItr = std::find_if(creatureBounds.first, creatureBounds.second, [](Map::CreatureBySpawnIdContainer::value_type const& pair)
+                    {
+                        return pair.second->IsAlive();
+                    });
 
-                    Trinity::CreatureWithDbGUIDCheck target_check(wSource, uint64(step.script->CallScript.CreatureEntry));
-                    Trinity::CreatureSearcher<Trinity::CreatureWithDbGUIDCheck> checker(wSource, cTarget, target_check);
-
-                    TypeContainerVisitor<Trinity::CreatureSearcher <Trinity::CreatureWithDbGUIDCheck>, GridTypeMapContainer > unit_checker(checker);
-                    cell.Visit(p, unit_checker, *wSource->GetMap(), *wSource, wSource->GetGridActivationRange());
-                }
-                else //check hashmap holders
-                {
-                    if (CreatureData const* data = sObjectMgr->GetCreatureData(step.script->CallScript.CreatureEntry))
-                        cTarget = ObjectAccessor::GetObjectInWorld<Creature>(data->mapid, data->posX, data->posY, ObjectGuid::Create<HighGuid::Creature>(data->mapid, data->id, uint64(step.script->CallScript.CreatureEntry)), cTarget);
+                    cTarget = creatureItr != creatureBounds.second ? creatureItr->second : creatureBounds.first->second;
                 }
 
                 if (!cTarget)

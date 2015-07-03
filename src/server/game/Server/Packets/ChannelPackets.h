@@ -1,19 +1,19 @@
 /*
-* Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms of the GNU General Public License as published by the
-* Free Software Foundation; either version 2 of the License, or (at your
-* option) any later version.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License along
-* with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef ChannelPackets_h__
 #define ChannelPackets_h__
@@ -95,6 +95,56 @@ namespace WorldPackets
             bool Suspended = false; ///< User Leave - false, On Zone Change - true
         };
 
+        class UserlistAdd final : public ServerPacket
+        {
+        public:
+            UserlistAdd() : ServerPacket(SMSG_USERLIST_ADD, 30) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid AddedUserGUID;
+
+            uint8 _ChannelFlags = CHANNEL_FLAG_NONE; ///< @see enum ChannelFlags
+            uint8 UserFlags = MEMBER_FLAG_NONE;
+
+            int32 ChannelID = 0;
+
+            std::string ChannelName;
+        };
+
+        class UserlistRemove final : public ServerPacket
+        {
+        public:
+            UserlistRemove() : ServerPacket(SMSG_USERLIST_REMOVE, 30) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid RemovedUserGUID;
+
+            uint8 _ChannelFlags = CHANNEL_FLAG_NONE; ///< @see enum ChannelFlags
+
+            uint32 ChannelID = 0;
+
+            std::string ChannelName;
+        };
+
+        class UserlistUpdate final : public ServerPacket
+        {
+        public:
+            UserlistUpdate() : ServerPacket(SMSG_USERLIST_UPDATE, 30) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid UpdatedUserGUID;
+
+            uint8 _ChannelFlags = CHANNEL_FLAG_NONE; ///< @see enum ChannelFlags
+            uint8 UserFlags = MEMBER_FLAG_NONE;
+
+            int32 ChannelID = 0;
+
+            std::string ChannelName;
+        };
+
         class ChannelPlayerCommand final : public ClientPacket
         {
         public:
@@ -104,28 +154,28 @@ namespace WorldPackets
                 {
                     default:
                         ASSERT(false);
-                    case CMSG_CHANNEL_ANNOUNCEMENTS:
-                    case CMSG_CHANNEL_BAN:
-                    case CMSG_CHANNEL_DECLINE_INVITE:
-                    case CMSG_CHANNEL_DISPLAY_LIST:
-                    case CMSG_CHANNEL_INVITE:
-                    case CMSG_CHANNEL_KICK:
-                    case CMSG_CHANNEL_LIST:
-                    //case CMSG_CHANNEL_MODERATE:
-                    case CMSG_CHANNEL_MODERATOR:
-                    case CMSG_CHANNEL_MUTE:
-                    case CMSG_CHANNEL_OWNER:
-                    case CMSG_CHANNEL_PASSWORD:
-                    case CMSG_CHANNEL_SET_OWNER:
-                    case CMSG_CHANNEL_SILENCE_ALL:
-                    case CMSG_CHANNEL_SILENCE_VOICE:
-                    case CMSG_CHANNEL_UNBAN:
-                    case CMSG_CHANNEL_UNMODERATOR:
-                    case CMSG_CHANNEL_UNMUTE:
-                    case CMSG_CHANNEL_UNSILENCE_ALL:
-                    case CMSG_CHANNEL_UNSILENCE_VOICE:
-                    case CMSG_CHANNEL_VOICE_OFF:
-                    case CMSG_CHANNEL_VOICE_ON:
+                    case CMSG_CHAT_CHANNEL_ANNOUNCEMENTS:
+                    case CMSG_CHAT_CHANNEL_BAN:
+                    case CMSG_CHAT_CHANNEL_DECLINE_INVITE:
+                    case CMSG_CHAT_CHANNEL_DISPLAY_LIST:
+                    case CMSG_CHAT_CHANNEL_INVITE:
+                    case CMSG_CHAT_CHANNEL_KICK:
+                    case CMSG_CHAT_CHANNEL_LIST:
+                    case CMSG_CHAT_CHANNEL_MODERATE:
+                    case CMSG_CHAT_CHANNEL_MODERATOR:
+                    case CMSG_CHAT_CHANNEL_MUTE:
+                    case CMSG_CHAT_CHANNEL_OWNER:
+                    case CMSG_CHAT_CHANNEL_PASSWORD:
+                    case CMSG_CHAT_CHANNEL_SET_OWNER:
+                    case CMSG_CHAT_CHANNEL_SILENCE_ALL:
+                    case CMSG_CHAT_CHANNEL_SILENCE_VOICE:
+                    case CMSG_CHAT_CHANNEL_UNBAN:
+                    case CMSG_CHAT_CHANNEL_UNMODERATOR:
+                    case CMSG_CHAT_CHANNEL_UNMUTE:
+                    case CMSG_CHAT_CHANNEL_UNSILENCE_ALL:
+                    case CMSG_CHAT_CHANNEL_UNSILENCE_VOICE:
+                    case CMSG_CHAT_CHANNEL_VOICE_OFF:
+                    case CMSG_CHAT_CHANNEL_VOICE_ON:
                         break;
                 }
             }
@@ -139,7 +189,7 @@ namespace WorldPackets
         class JoinChannel final : public ClientPacket
         {
         public:
-            JoinChannel(WorldPacket&& packet) : ClientPacket(CMSG_JOIN_CHANNEL, std::move(packet)) { }
+            JoinChannel(WorldPacket&& packet) : ClientPacket(CMSG_CHAT_JOIN_CHANNEL, std::move(packet)) { }
 
             void Read() override;
 
@@ -153,7 +203,7 @@ namespace WorldPackets
         class LeaveChannel final : public ClientPacket
         {
         public:
-            LeaveChannel(WorldPacket&& packet) : ClientPacket(CMSG_LEAVE_CHANNEL, std::move(packet)) { }
+            LeaveChannel(WorldPacket&& packet) : ClientPacket(CMSG_CHAT_LEAVE_CHANNEL, std::move(packet)) { }
 
             void Read() override;
 

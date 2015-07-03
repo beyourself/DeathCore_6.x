@@ -30,7 +30,7 @@ namespace WorldPackets
         class QueryGuildInfo final : public ClientPacket
         {
         public:
-            QueryGuildInfo(WorldPacket&& packet) : ClientPacket(CMSG_GUILD_QUERY, std::move(packet)) { }
+            QueryGuildInfo(WorldPacket&& packet) : ClientPacket(CMSG_QUERY_GUILD_INFO, std::move(packet)) { }
 
             void Read() override;
 
@@ -638,7 +638,7 @@ namespace WorldPackets
         class RequestGuildPartyState final : public ClientPacket
         {
         public:
-            RequestGuildPartyState(WorldPacket&& packet) : ClientPacket(CMSG_GUILD_REQUEST_PARTY_STATE, std::move(packet)) { }
+            RequestGuildPartyState(WorldPacket&& packet) : ClientPacket(CMSG_REQUEST_GUILD_PARTY_STATE, std::move(packet)) { }
 
             void Read() override;
 
@@ -648,7 +648,7 @@ namespace WorldPackets
         class GuildPartyState final : public ServerPacket
         {
         public:
-            GuildPartyState() : ServerPacket(SMSG_GUILD_PARTY_STATE_RESPONSE, 15) { }
+            GuildPartyState() : ServerPacket(SMSG_GUILD_PARTY_STATE, 15) { }
 
             WorldPacket const* Write() override;
 
@@ -671,6 +671,7 @@ namespace WorldPackets
         struct GuildRewardItem
         {
             uint32 ItemID = 0;
+            uint32 Unk4 = 0;
             std::vector<uint32> AchievementsRequired;
             uint32 RaceMask = 0;
             int32 MinGuildLevel = 0;
@@ -681,7 +682,7 @@ namespace WorldPackets
         class GuildRewardList final : public ServerPacket
         {
         public:
-            GuildRewardList() : ServerPacket(SMSG_GUILD_REWARDS_LIST, 8) { }
+            GuildRewardList() : ServerPacket(SMSG_GUILD_REWARD_LIST, 8) { }
 
             WorldPacket const* Write() override;
 
@@ -865,7 +866,7 @@ namespace WorldPackets
         class GuildBankLogQueryResults final : public ServerPacket
         {
         public:
-            GuildBankLogQueryResults() : ServerPacket(SMSG_GUILD_BANK_LOG_QUERY_RESULT, 25) { }
+            GuildBankLogQueryResults() : ServerPacket(SMSG_GUILD_BANK_LOG_QUERY_RESULTS, 25) { }
 
             WorldPacket const* Write() override;
 
@@ -999,11 +1000,21 @@ namespace WorldPackets
         class PlayerSaveGuildEmblem final : public ServerPacket
         {
         public:
-            PlayerSaveGuildEmblem() : ServerPacket(SMSG_SAVE_GUILD_EMBLEM, 4) { }
+            PlayerSaveGuildEmblem() : ServerPacket(SMSG_PLAYER_SAVE_GUILD_EMBLEM, 4) { }
 
             WorldPacket const* Write() override;
 
             int32 Error = 0;
+        };
+
+        class GuildSetAchievementTracking final : public ClientPacket
+        {
+        public:
+            GuildSetAchievementTracking(WorldPacket&& packet) : ClientPacket(CMSG_GUILD_SET_ACHIEVEMENT_TRACKING, std::move(packet)) { }
+
+            void Read() override;
+
+            std::set<uint32> AchievementIDs;
         };
     }
 }

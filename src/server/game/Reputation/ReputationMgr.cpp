@@ -27,8 +27,12 @@
 #include "ScriptMgr.h"
 #include "Opcodes.h"
 #include "WorldSession.h"
+#include "CharacterPackets.h"
 
 const int32 ReputationMgr::PointsInRank[MAX_REPUTATION_RANK] = {36000, 3000, 3000, 3000, 6000, 12000, 21000, 1000};
+
+const int32 ReputationMgr::Reputation_Cap = 42999;
+const int32 ReputationMgr::Reputation_Bottom = -42000;
 
 ReputationRank ReputationMgr::ReputationToRank(int32 standing)
 {
@@ -154,15 +158,18 @@ uint32 ReputationMgr::GetDefaultStateFlags(FactionEntry const* factionEntry) con
 
 void ReputationMgr::SendForceReactions()
 {
-    WorldPacket data;
-    data.Initialize(SMSG_SET_FORCED_REACTIONS, 4+_forcedReactions.size()*(4+4));
-    data << uint32(_forcedReactions.size());
+    WorldPackets::Reputation::SetForcedReactions setForcedReactions;
+    setForcedReactions.Reactions.resize(_forcedReactions.size());
+
+    std::size_t i = 0;
     for (ForcedReactions::const_iterator itr = _forcedReactions.begin(); itr != _forcedReactions.end(); ++itr)
     {
-        data << uint32(itr->first);                         // faction_id (Faction.dbc)
-        data << uint32(itr->second);                        // reputation rank
+        WorldPackets::Reputation::ForcedReaction& forcedReaction = setForcedReactions.Reactions[i++];
+        forcedReaction.Faction = int32(itr->first);
+        forcedReaction.Reaction = int32(itr->second);
     }
-    _player->SendDirectMessage(&data);
+
+    _player->SendDirectMessage(setForcedReactions.Write());
 }
 
 void ReputationMgr::SendState(FactionState const* faction)
@@ -219,15 +226,15 @@ void ReputationMgr::SendStates()
         SendState(&(itr->second));
 }
 
-void ReputationMgr::SendVisible(FactionState const* faction, bool visible /* = true*/) const
+void ReputationMgr::SendVisible(FactionState const* faction, bool visible) const
 {
     if (_player->GetSession()->PlayerLoading())
         return;
 
     // make faction visible/not visible in reputation list at client
-    WorldPacket data(visible ? SMSG_SET_FACTION_VISIBLE : SMSG_SET_FACTION_NOT_VISIBLE, 4);
-    data << faction->ReputationListID;
-    _player->SendDirectMessage(&data);
+    WorldPackets::Character::SetFactionVisible packet(visible);
+    packet.FactionIndex = faction->ReputationListID;
+    _player->SendDirectMessage(packet.Write());
 }
 
 void ReputationMgr::Initialize()

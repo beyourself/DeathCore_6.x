@@ -24,7 +24,7 @@ WorldPackets::Mail::MailAttachedItem::MailAttachedItem(::Item const* item, uint8
 {
     Position = pos;
     AttachID = item->GetGUID().GetCounter();
-    Item.Initalize(item);
+    Item.Initialize(item);
     Count = item->GetCount();
     Charges = item->GetSpellCharges();
     MaxDurability = item->GetUInt32Value(ITEM_FIELD_MAXDURABILITY);
@@ -70,15 +70,13 @@ WorldPackets::Mail::MailListEntry::MailListEntry(::Mail const* mail, ::Player* p
     switch (mail->messageType)
     {
         case MAIL_NORMAL:
-            SenderCharacter.Set(ObjectGuid::Create<HighGuid::Player>(mail->sender));
-            SenderHint.NativeRealmAddress.Set(GetVirtualRealmAddress());
-            SenderHint.VirtualRealmAddress.Set(GetVirtualRealmAddress());
+            SenderCharacter = ObjectGuid::Create<HighGuid::Player>(mail->sender);
             break;
         case MAIL_CREATURE:
         case MAIL_GAMEOBJECT:
         case MAIL_AUCTION:
         case MAIL_CALENDAR:
-            AltSenderID.Set(mail->sender);
+            AltSenderID = mail->sender;
             break;
     }
 
@@ -104,8 +102,6 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Mail::MailListEntry const
     data << int32(entry.MailID);
     data << int8(entry.SenderType);
 
-    data << entry.SenderHint;
-
     data << int64(entry.Cod);
     data << int32(entry.PackageID);
     data << int32(entry.StationeryID);
@@ -119,18 +115,18 @@ ByteBuffer& operator<<(ByteBuffer& data, WorldPackets::Mail::MailListEntry const
     for (auto const& att : entry.Attachments)
         data << att;
 
-    data.WriteBit(entry.SenderCharacter.HasValue);
-    data.WriteBit(entry.AltSenderID.HasValue);
+    data.WriteBit(entry.SenderCharacter.is_initialized());
+    data.WriteBit(entry.AltSenderID.is_initialized());
 
     data.WriteBits(entry.Subject.size(), 8);
     data.WriteBits(entry.Body.size(), 13);
     data.FlushBits();
 
-    if (entry.SenderCharacter.HasValue)
-        data << entry.SenderCharacter.Value;
+    if (entry.SenderCharacter)
+        data << *entry.SenderCharacter;
 
-    if (entry.AltSenderID.HasValue)
-        data << int32(entry.AltSenderID.Value);
+    if (entry.AltSenderID)
+        data << int32(*entry.AltSenderID);
 
     data.WriteString(entry.Subject);
     data.WriteString(entry.Body);
@@ -240,8 +236,6 @@ WorldPackets::Mail::MailQueryNextTimeResult::MailNextTimeEntry::MailNextTimeEntr
     {
         case MAIL_NORMAL:
             SenderGuid = ObjectGuid::Create<HighGuid::Player>(mail->sender);
-            SenderHint.NativeRealmAddress.Set(GetVirtualRealmAddress());
-            SenderHint.VirtualRealmAddress.Set(GetVirtualRealmAddress());
             break;
         case MAIL_AUCTION:
         case MAIL_CREATURE:
@@ -264,8 +258,6 @@ WorldPacket const* WorldPackets::Mail::MailQueryNextTimeResult::Write()
     for (auto const& entry : Next)
     {
         _worldPacket << entry.SenderGuid;
-        _worldPacket << entry.SenderHint;
-
         _worldPacket << float(entry.TimeLeft);
         _worldPacket << int32(entry.AltSenderID);
         _worldPacket << int8(entry.AltSenderType);
@@ -278,6 +270,13 @@ WorldPacket const* WorldPackets::Mail::MailQueryNextTimeResult::Write()
 WorldPacket const* WorldPackets::Mail::NotifyRecievedMail::Write()
 {
     _worldPacket << float(Delay);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Mail::ShowMailbox::Write()
+{
+    _worldPacket << PostmasterGUID;
 
     return &_worldPacket;
 }

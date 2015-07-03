@@ -28,6 +28,12 @@
 
 namespace Battlenet
 {
+    union FloatToInt
+    {
+        float AsFloat;
+        uint32 AsInt;
+    };
+
     class BitStreamPositionException : public std::exception
     {
         static uint32 const MessageSize = 128;
@@ -64,7 +70,7 @@ namespace Battlenet
             _buffer.resize(length, 0);
         }
 
-        BitStream(MessageBuffer&& buffer) : _writePos(buffer.GetActiveSize() * 8), _readPos(0), _buffer(buffer.Move())
+        BitStream(MessageBuffer&& buffer) : _writePos(uint32(buffer.GetActiveSize()) << 3), _readPos(0), _buffer(buffer.Move())
         {
         }
 
@@ -102,8 +108,14 @@ namespace Battlenet
 
         float ReadFloat()
         {
-            uint32 val = Read<uint32>(32);
-            return *reinterpret_cast<float*>(&val);
+            union
+            {
+                float AsFloat;
+                uint32 AsInt;
+            } convert;
+
+            convert.AsInt = Read<uint32>(32);
+            return convert.AsFloat;
         }
 
         std::string ReadFourCC()
@@ -147,7 +159,7 @@ namespace Battlenet
         void WriteString(std::string const& str, uint32 bitCount, int32 baseLength = 0)
         {
             Write(str.length() + baseLength, bitCount);
-            WriteBytes(str.c_str(), str.length());
+            WriteBytes(str.c_str(), uint32(str.length()));
         }
 
         template<typename T>
@@ -167,8 +179,14 @@ namespace Battlenet
 
         void WriteFloat(float value)
         {
-            uint32 intVal = *reinterpret_cast<uint32*>(&value);
-            Write(intVal, 32);
+            union
+            {
+                float AsFloat;
+                uint32 AsInt;
+            } convert;
+
+            convert.AsFloat = value;
+            Write(convert.AsInt, 32);
         }
 
         void WriteFourCC(std::string const& fcc)

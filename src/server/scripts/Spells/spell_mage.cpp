@@ -85,6 +85,7 @@ enum MageSpells
 
     SPELL_MAGE_FINGERS_OF_FROST                  = 44544,
     SPELL_MAGE_TEMPORAL_DISPLACEMENT             = 80354,
+    SPELL_PET_NETHERWINDS_FATIGUED               = 160455,
 };
 
 enum MageIcons
@@ -548,7 +549,7 @@ class spell_mage_fire_frost_ward : public SpellScriptLoader
                 }
             }
 
-            void Absorb(AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
+            void Absorb(AuraEffect* /*aurEff*/, DamageInfo& /*dmgInfo*/, uint32& /*absorbAmount*/)
             {
                 /*Unit* target = GetTarget();
                 if (AuraEffect* talentAurEff = target->GetAuraEffectOfRankedSpell(SPELL_MAGE_FROST_WARDING_R1, EFFECT_0))
@@ -789,7 +790,7 @@ class spell_mage_living_bomb : public SpellScriptLoader
         {
             PrepareAuraScript(spell_mage_living_bomb_AuraScript);
 
-            bool Validate(SpellInfo const* spellInfo)
+            bool Validate(SpellInfo const* spellInfo) override
             {
                 if (!sSpellMgr->GetSpellInfo(uint32(spellInfo->GetEffect(EFFECT_1)->CalcValue())))
                     return false;
@@ -1004,11 +1005,14 @@ class spell_mage_master_of_elements : public SpellScriptLoader
             {
                 PreventDefaultAction();
 
-                int32 mana = int32(eventInfo.GetDamageInfo()->GetSpellInfo()->CalcPowerCost(GetTarget(), eventInfo.GetDamageInfo()->GetSchoolMask()));
-                mana = CalculatePct(mana, aurEff->GetAmount());
-
-                if (mana > 0)
-                    GetTarget()->CastCustomSpell(SPELL_MAGE_MASTER_OF_ELEMENTS_ENERGIZE, SPELLVALUE_BASE_POINT0, mana, GetTarget(), true, NULL, aurEff);
+                std::vector<SpellInfo::CostData> costs = eventInfo.GetDamageInfo()->GetSpellInfo()->CalcPowerCost(GetTarget(), eventInfo.GetDamageInfo()->GetSchoolMask());
+                auto m = std::find_if(costs.begin(), costs.end(), [](SpellInfo::CostData const& cost) { return cost.Power == POWER_MANA; });
+                if (m != costs.end())
+                {
+                    int32 mana = CalculatePct(m->Amount, aurEff->GetAmount());
+                    if (mana > 0)
+                        GetTarget()->CastCustomSpell(SPELL_MAGE_MASTER_OF_ELEMENTS_ENERGIZE, SPELLVALUE_BASE_POINT0, mana, GetTarget(), true, NULL, aurEff);
+                }
             }
 
             void Register() override
@@ -1298,7 +1302,7 @@ class spell_mage_ring_of_frost : public SpellScriptLoader
                 GetTarget()->GetAllMinionsByEntry(MinionList, GetSpellInfo()->GetEffect(EFFECT_0)->MiscValue);
 
                 // Get the last summoned RoF, save it and despawn older ones
-                for (std::list<TempSummon*>::iterator itr = MinionList.begin(); itr != MinionList.end(); itr++)
+                for (std::list<TempSummon*>::iterator itr = MinionList.begin(); itr != MinionList.end(); ++itr)
                 {
                     TempSummon* summon = (*itr);
 
@@ -1431,7 +1435,8 @@ class spell_mage_time_warp : public SpellScriptLoader
                 if (!sSpellMgr->GetSpellInfo(SPELL_MAGE_TEMPORAL_DISPLACEMENT)
                     || !sSpellMgr->GetSpellInfo(SPELL_HUNTER_INSANITY)
                     || !sSpellMgr->GetSpellInfo(SPELL_SHAMAN_EXHAUSTION)
-                    || !sSpellMgr->GetSpellInfo(SPELL_SHAMAN_SATED))
+                    || !sSpellMgr->GetSpellInfo(SPELL_SHAMAN_SATED)
+                    || !sSpellMgr->GetSpellInfo(SPELL_PET_NETHERWINDS_FATIGUED))
                     return false;
                 return true;
             }

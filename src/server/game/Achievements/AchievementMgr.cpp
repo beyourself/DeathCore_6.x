@@ -28,6 +28,7 @@
 #include "DBCEnums.h"
 #include "DisableMgr.h"
 #include "GameEventMgr.h"
+#include "Garrison.h"
 #include "GridNotifiersImpl.h"
 #include "Group.h"
 #include "Guild.h"
@@ -398,7 +399,7 @@ template<class T>
 AchievementMgr<T>::~AchievementMgr() { }
 
 template<class T>
-void AchievementMgr<T>::SendPacket(WorldPacket const* data) const { }
+void AchievementMgr<T>::SendPacket(WorldPacket const* /*data*/) const { }
 
 template<>
 void AchievementMgr<Guild>::SendPacket(WorldPacket const* data) const
@@ -628,7 +629,7 @@ void AchievementMgr<Guild>::SaveToDB(SQLTransaction& trans)
     }
 }
 template<class T>
-void AchievementMgr<T>::LoadFromDB(PreparedQueryResult achievementResult, PreparedQueryResult criteriaResult)
+void AchievementMgr<T>::LoadFromDB(PreparedQueryResult /*achievementResult*/, PreparedQueryResult /*criteriaResult*/)
 {
 }
 
@@ -1055,6 +1056,7 @@ void AchievementMgr<T>::UpdateAchievementCriteria(AchievementCriteriaTypes type,
             case ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA:
             case ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA: // This also behaves like ACHIEVEMENT_CRITERIA_TYPE_WIN_RATED_ARENA
             case ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN:
+            case ACHIEVEMENT_CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
                 SetCriteriaProgress(achievementCriteria, 1, referencePlayer, PROGRESS_ACCUMULATE);
                 break;
             // std case: increment at miscValue1
@@ -1161,6 +1163,7 @@ void AchievementMgr<T>::UpdateAchievementCriteria(AchievementCriteriaTypes type,
             case ACHIEVEMENT_CRITERIA_TYPE_EQUIP_EPIC_ITEM:
             case ACHIEVEMENT_CRITERIA_TYPE_EQUIP_ITEM:
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_ACHIEVEMENT:
+            case ACHIEVEMENT_CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
                 SetCriteriaProgress(achievementCriteria, 1, referencePlayer);
                 break;
             case ACHIEVEMENT_CRITERIA_TYPE_BUY_BANK_SLOT:
@@ -1215,36 +1218,6 @@ void AchievementMgr<T>::UpdateAchievementCriteria(AchievementCriteriaTypes type,
                 else
                     SetCriteriaProgress(achievementCriteria, miscValue1, referencePlayer, PROGRESS_ACCUMULATE);
                 break;
-            case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_TEAM_RATING:
-            {
-                uint32 reqTeamType = achievementCriteria->Entry->Asset.TeamType;
-
-                if (miscValue1)
-                {
-                    if (miscValue2 != reqTeamType)
-                        continue;
-
-                    SetCriteriaProgress(achievementCriteria, miscValue1, referencePlayer, PROGRESS_HIGHEST);
-                }
-                else // login case
-                {
-                    for (uint32 arena_slot = 0; arena_slot < MAX_ARENA_SLOT; ++arena_slot)
-                    {
-                        uint32 teamId = referencePlayer->GetArenaTeamId(arena_slot);
-                        if (!teamId)
-                            continue;
-
-                        ArenaTeam* team = sArenaTeamMgr->GetArenaTeamById(teamId);
-                        if (!team || team->GetType() != reqTeamType)
-                            continue;
-
-                        SetCriteriaProgress(achievementCriteria, team->GetStats().Rating, referencePlayer, PROGRESS_HIGHEST);
-                        break;
-                    }
-                }
-
-                break;
-            }
             case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_PERSONAL_RATING:
             {
                 uint32 reqTeamType = achievementCriteria->Entry->Asset.TeamType;
@@ -1283,6 +1256,7 @@ void AchievementMgr<T>::UpdateAchievementCriteria(AchievementCriteriaTypes type,
             // FIXME: not triggered in code as result, need to implement
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_RAID:
             case ACHIEVEMENT_CRITERIA_TYPE_PLAY_ARENA:
+            case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_TEAM_RATING:
             case ACHIEVEMENT_CRITERIA_TYPE_OWN_RANK:
             case ACHIEVEMENT_CRITERIA_TYPE_SPENT_GOLD_GUILD_REPAIRS:
             case ACHIEVEMENT_CRITERIA_TYPE_CRAFT_ITEMS_GUILD:
@@ -1298,6 +1272,38 @@ void AchievementMgr<T>::UpdateAchievementCriteria(AchievementCriteriaTypes type,
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_ARCHAEOLOGY_PROJECTS:
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GUILD_CHALLENGE_TYPE:
             case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GUILD_CHALLENGE:
+            case ACHIEVEMENT_CRITERIA_TYPE_LFR_DUNGEONS_COMPLETED:
+            case ACHIEVEMENT_CRITERIA_TYPE_LFR_LEAVES:
+            case ACHIEVEMENT_CRITERIA_TYPE_LFR_VOTE_KICKS_INITIATED_BY_PLAYER:
+            case ACHIEVEMENT_CRITERIA_TYPE_LFR_VOTE_KICKS_NOT_INIT_BY_PLAYER:
+            case ACHIEVEMENT_CRITERIA_TYPE_BE_KICKED_FROM_LFR:
+            case ACHIEVEMENT_CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_SCENARIO:
+            case ACHIEVEMENT_CRITERIA_TYPE_OWN_BATTLE_PET:
+            case ACHIEVEMENT_CRITERIA_TYPE_OWN_BATTLE_PET_COUNT:
+            case ACHIEVEMENT_CRITERIA_TYPE_CAPTURE_BATTLE_PET:
+            case ACHIEVEMENT_CRITERIA_TYPE_WIN_PET_BATTLE:
+            case ACHIEVEMENT_CRITERIA_TYPE_LEVEL_BATTLE_PET:
+            case ACHIEVEMENT_CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
+            case ACHIEVEMENT_CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT:
+            case ACHIEVEMENT_CRITERIA_TYPE_ENTER_AREA:
+            case ACHIEVEMENT_CRITERIA_TYPE_LEAVE_AREA:
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
+            case ACHIEVEMENT_CRITERIA_TYPE_UPGRADE_GARRISON_BUILDING:
+            case ACHIEVEMENT_CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
+            case ACHIEVEMENT_CRITERIA_TYPE_UPGRADE_GARRISON:
+            case ACHIEVEMENT_CRITERIA_TYPE_START_GARRISON_MISSION:
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_MISSION:
+            case ACHIEVEMENT_CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER_COUNT:
+            case ACHIEVEMENT_CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
+            case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
+            case ACHIEVEMENT_CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
+            case ACHIEVEMENT_CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
+            case ACHIEVEMENT_CRITERIA_TYPE_OWN_TOY:
+            case ACHIEVEMENT_CRITERIA_TYPE_OWN_TOY_COUNT:
+            case ACHIEVEMENT_CRITERIA_TYPE_OWN_HEIRLOOMS:
                 break;                                   // Not implemented yet :(
         }
 
@@ -1437,11 +1443,13 @@ bool AchievementMgr<T>::IsCompletedCriteria(AchievementCriteria const* achieveme
         case ACHIEVEMENT_CRITERIA_TYPE_USE_LFD_TO_GROUP_WITH_PLAYERS:
         case ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS:
         case ACHIEVEMENT_CRITERIA_TYPE_CURRENCY:
+        case ACHIEVEMENT_CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
             return progress->counter >= requiredAmount;
         case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_ACHIEVEMENT:
         case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_QUEST:
         case ACHIEVEMENT_CRITERIA_TYPE_LEARN_SPELL:
         case ACHIEVEMENT_CRITERIA_TYPE_EXPLORE_AREA:
+        case ACHIEVEMENT_CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
             return progress->counter >= 1;
         case ACHIEVEMENT_CRITERIA_TYPE_LEARN_SKILL_LEVEL:
             return progress->counter >= (requiredAmount * 75);
@@ -1738,7 +1746,7 @@ void AchievementMgr<Player>::CompletedAchievement(AchievementEntry const* achiev
     if (!GetOwner()->GetSession()->PlayerLoading())
         SendAchievementEarned(achievement);
 
-    TC_LOG_INFO("achievement", "AchievementMgr::CompletedAchievement(%u). %s %s",
+    TC_LOG_DEBUG("achievement", "AchievementMgr::CompletedAchievement(%u). %s %s",
         achievement->ID, GetOwner()->GetGUID().ToString().c_str(), GetOwner()->GetName().c_str());
 
     CompletedAchievementData& ca = m_completedAchievements[achievement->ID];
@@ -1779,13 +1787,13 @@ void AchievementMgr<Player>::CompletedAchievement(AchievementEntry const* achiev
             std::string subject = reward->subject;
             std::string text = reward->text;
 
-            int locIdx = GetOwner()->GetSession()->GetSessionDbLocaleIndex();
-            if (locIdx >= 0)
+            LocaleConstant localeConstant = GetOwner()->GetSession()->GetSessionDbLocaleIndex();
+            if (localeConstant >= LOCALE_enUS)
             {
                 if (AchievementRewardLocale const* loc = sAchievementMgr->GetAchievementRewardLocale(achievement))
                 {
-                    ObjectMgr::GetLocaleString(loc->subject, locIdx, subject);
-                    ObjectMgr::GetLocaleString(loc->text, locIdx, text);
+                    ObjectMgr::GetLocaleString(loc->subject, localeConstant, subject);
+                    ObjectMgr::GetLocaleString(loc->text, localeConstant, text);
                 }
             }
 
@@ -2143,7 +2151,6 @@ bool AchievementMgr<T>::RequirementsSatisfied(AchievementCriteria const* achieve
         case ACHIEVEMENT_CRITERIA_TYPE_GAIN_REVERED_REPUTATION:
         case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_GOLD_VALUE_OWNED:
         case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_PERSONAL_RATING:
-        case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_TEAM_RATING:
         case ACHIEVEMENT_CRITERIA_TYPE_KNOWN_FACTIONS:
         case ACHIEVEMENT_CRITERIA_TYPE_REACH_LEVEL:
         case ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN:
@@ -2373,6 +2380,12 @@ bool AchievementMgr<T>::RequirementsSatisfied(AchievementCriteria const* achieve
             if (miscValue1 != achievementCriteria->Entry->Asset.MapID)
                 return false;
             break;
+        case ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_TEAM_RATING:
+            return false;
+        case ACHIEVEMENT_CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
+            if (miscValue1 != achievementCriteria->Entry->Asset.GarrBuildingID)
+                return false;
+            break;
         default:
             break;
     }
@@ -2520,6 +2533,44 @@ bool AchievementMgr<T>::AdditionalRequirementsSatisfied(ModifierTreeNode const* 
             if (!unit || unit->GetHealthPct() >= reqValue)
                 return false;
             break;
+        case ACHIEVEMENT_CRITERIA_ADDITIONAL_CONDITION_GARRISON_FOLLOWER_QUALITY: // 145
+        {
+            if (!referencePlayer)
+                return false;
+            Garrison* garrison = referencePlayer->GetGarrison();
+            if (!garrison)
+                return false;
+            Garrison::Follower const* follower = garrison->GetFollower(miscValue1);
+            if (!follower || follower->PacketInfo.Quality != reqValue)
+                return false;
+
+            break;
+        }
+        case ACHIEVEMENT_CRITERIA_ADDITIONAL_CONDITION_GARRISON_FOLLOWER_LEVEL: // 146
+        {
+            if (!referencePlayer)
+                return false;
+            Garrison* garrison = referencePlayer->GetGarrison();
+            if (!garrison)
+                return false;
+            Garrison::Follower const* follower = garrison->GetFollower(miscValue1);
+            if (!follower || follower->PacketInfo.FollowerLevel < reqValue)
+                return false;
+
+            break;
+        }
+        case ACHIEVEMENT_CRITERIA_ADDITIONAL_CONDITION_GARRISON_FOLLOWER_ILVL: // 184
+        {
+            if (!referencePlayer)
+                return false;
+            Garrison* garrison = referencePlayer->GetGarrison();
+            if (!garrison)
+                return false;
+            Garrison::Follower const* follower = garrison->GetFollower(miscValue1);
+            if (!follower || follower->GetItemLevel() < reqValue)
+                return false;
+            break;
+        }
         default:
             break;
     }
@@ -2757,6 +2808,74 @@ char const* AchievementGlobalMgr::GetCriteriaTypeString(AchievementCriteriaTypes
             return "GUILD_CHALLENGE_TYPE";
         case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GUILD_CHALLENGE:
             return "GUILD_CHALLENGE";
+        case ACHIEVEMENT_CRITERIA_TYPE_LFR_DUNGEONS_COMPLETED:
+            return "LFR_DUNGEONS_COMPLETED";
+        case ACHIEVEMENT_CRITERIA_TYPE_LFR_LEAVES:
+            return "LFR_LEAVES";
+        case ACHIEVEMENT_CRITERIA_TYPE_LFR_VOTE_KICKS_INITIATED_BY_PLAYER:
+            return "LFR_VOTE_KICKS_INITIATED_BY_PLAYER";
+        case ACHIEVEMENT_CRITERIA_TYPE_LFR_VOTE_KICKS_NOT_INIT_BY_PLAYER:
+            return "LFR_VOTE_KICKS_NOT_INIT_BY_PLAYER";
+        case ACHIEVEMENT_CRITERIA_TYPE_BE_KICKED_FROM_LFR:
+            return "BE_KICKED_FROM_LFR";
+        case ACHIEVEMENT_CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
+            return "COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK";
+        case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
+            return "COMPLETE_SCENARIO_COUNT";
+        case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_SCENARIO:
+            return "COMPLETE_SCENARIO";
+        case ACHIEVEMENT_CRITERIA_TYPE_OWN_BATTLE_PET:
+            return "OWN_BATTLE_PET";
+        case ACHIEVEMENT_CRITERIA_TYPE_OWN_BATTLE_PET_COUNT:
+            return "OWN_BATTLE_PET_COUNT";
+        case ACHIEVEMENT_CRITERIA_TYPE_CAPTURE_BATTLE_PET:
+            return "CAPTURE_BATTLE_PET";
+        case ACHIEVEMENT_CRITERIA_TYPE_WIN_PET_BATTLE:
+            return "WIN_PET_BATTLE";
+        case ACHIEVEMENT_CRITERIA_TYPE_LEVEL_BATTLE_PET:
+            return "LEVEL_BATTLE_PET";
+        case ACHIEVEMENT_CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
+            return "CAPTURE_BATTLE_PET_CREDIT";
+        case ACHIEVEMENT_CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT:
+            return "LEVEL_BATTLE_PET_CREDIT";
+        case ACHIEVEMENT_CRITERIA_TYPE_ENTER_AREA:
+            return "ENTER_AREA";
+        case ACHIEVEMENT_CRITERIA_TYPE_LEAVE_AREA:
+            return "LEAVE_AREA";
+        case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
+            return "COMPLETE_DUNGEON_ENCOUNTER";
+        case ACHIEVEMENT_CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
+            return "PLACE_GARRISON_BUILDING";
+        case ACHIEVEMENT_CRITERIA_TYPE_UPGRADE_GARRISON_BUILDING:
+            return "UPGRADE_GARRISON_BUILDING";
+        case ACHIEVEMENT_CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
+            return "CONSTRUCT_GARRISON_BUILDING";
+        case ACHIEVEMENT_CRITERIA_TYPE_UPGRADE_GARRISON:
+            return "UPGRADE_GARRISON";
+        case ACHIEVEMENT_CRITERIA_TYPE_START_GARRISON_MISSION:
+            return "START_GARRISON_MISSION";
+        case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
+            return "COMPLETE_GARRISON_MISSION_COUNT";
+        case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_MISSION:
+            return "COMPLETE_GARRISON_MISSION";
+        case ACHIEVEMENT_CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER_COUNT:
+            return "RECRUIT_GARRISON_FOLLOWER_COUNT";
+        case ACHIEVEMENT_CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
+            return "LEARN_GARRISON_BLUEPRINT_COUNT";
+        case ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
+            return "COMPLETE_GARRISON_SHIPMENT";
+        case ACHIEVEMENT_CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
+            return "RAISE_GARRISON_FOLLOWER_ITEM_LEVEL";
+        case ACHIEVEMENT_CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
+            return "RAISE_GARRISON_FOLLOWER_LEVEL";
+        case ACHIEVEMENT_CRITERIA_TYPE_OWN_TOY:
+            return "OWN_TOY";
+        case ACHIEVEMENT_CRITERIA_TYPE_OWN_TOY_COUNT:
+            return "OWN_TOY_COUNT";
+        case ACHIEVEMENT_CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
+            return "RECRUIT_GARRISON_FOLLOWER";
+        case ACHIEVEMENT_CRITERIA_TYPE_OWN_HEIRLOOMS:
+            return "OWN_HEIRLOOMS";
     }
     return "MISSING_TYPE";
 }
@@ -2841,7 +2960,7 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
         CriteriaTreeEntry const* cur = tree;
         while (achievementItr == achievementCriteriaTreeIds.end())
         {
-            if (!tree->Parent)
+            if (!cur->Parent)
                 break;
 
             cur = sCriteriaTreeStore.LookupEntry(cur->Parent);
@@ -2860,8 +2979,6 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
         achievementCriteriaTree->Entry = tree;
 
         _achievementCriteriaTrees[achievementCriteriaTree->Entry->ID] = achievementCriteriaTree;
-        if (sCriteriaStore.LookupEntry(tree->CriteriaID))
-            _achievementCriteriaTreeByCriteria[tree->CriteriaID].push_back(achievementCriteriaTree);
     }
 
     // Build tree
@@ -2872,7 +2989,21 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
 
         auto parent = _achievementCriteriaTrees.find(itr->second->Entry->Parent);
         if (parent != _achievementCriteriaTrees.end())
+        {
             parent->second->Children.push_back(itr->second);
+            while (parent != _achievementCriteriaTrees.end())
+            {
+                auto cur = parent;
+                parent = _achievementCriteriaTrees.find(parent->second->Entry->Parent);
+                if (parent == _achievementCriteriaTrees.end())
+                {
+                    if (sCriteriaStore.LookupEntry(itr->second->Entry->CriteriaID))
+                        _achievementCriteriaTreeByCriteria[itr->second->Entry->CriteriaID].push_back(cur->second);
+                }
+            }
+        }
+        else if (sCriteriaStore.LookupEntry(itr->second->Entry->CriteriaID))
+            _achievementCriteriaTreeByCriteria[itr->second->Entry->CriteriaID].push_back(itr->second);
     }
 
     // Load criteria
@@ -2899,8 +3030,6 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
 
         for (AchievementCriteriaTree const* tree : treeItr->second)
         {
-            const_cast<AchievementCriteriaTree*>(tree)->Criteria = achievementCriteria;
-
             if (tree->Achievement->Flags & ACHIEVEMENT_FLAG_GUILD)
                 achievementCriteria->FlagsCu |= ACHIEVEMENT_CRITERIA_FLAG_CU_GUILD;
             else if (tree->Achievement->Flags & ACHIEVEMENT_FLAG_ACCOUNT)
@@ -2924,6 +3053,9 @@ void AchievementGlobalMgr::LoadAchievementCriteriaList()
         if (criteria->StartTimer)
             _achievementCriteriasByTimedType[criteria->StartEvent].push_back(achievementCriteria);
     }
+
+    for (auto& p : _achievementCriteriaTrees)
+        const_cast<AchievementCriteriaTree*>(p.second)->Criteria = GetAchievementCriteria(p.second->Entry->CriteriaID);
 
     TC_LOG_INFO("server.loading", ">> Loaded %u achievement criteria and %u guild achievement crieteria in %u ms", criterias, guildCriterias, GetMSTimeDiffToNow(oldMSTime));
 }

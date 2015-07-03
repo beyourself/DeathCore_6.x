@@ -34,10 +34,10 @@ Quest::Quest(Field* questRecord)
     SuggestedPlayers = questRecord[7].GetUInt8();
     NextQuestInChain = questRecord[8].GetUInt32();
     RewardXPDifficulty = questRecord[9].GetUInt32();
-    Float10 = questRecord[10].GetFloat();
+    RewardXPMultiplier = questRecord[10].GetFloat();
     RewardMoney = questRecord[11].GetUInt32();
     RewardMoneyDifficulty = questRecord[12].GetUInt32();
-    Float13 = questRecord[13].GetFloat();
+    RewardMoneyMultiplier = questRecord[13].GetFloat();
     RewardBonusMoney = questRecord[14].GetUInt32();
     RewardDisplaySpell = questRecord[15].GetUInt32();
     RewardSpell = questRecord[16].GetUInt32();
@@ -194,7 +194,7 @@ void Quest::LoadQuestObjective(Field* fields)
 
 void Quest::LoadQuestObjectiveVisualEffect(Field* fields)
 {
-    uint8 objID = fields[1].GetUInt32();
+    uint32 objID = fields[1].GetUInt32();
 
     for (QuestObjective& obj : Objectives)
     {
@@ -225,7 +225,7 @@ uint32 Quest::XPValue(uint32 playerLevel) const
         else if (diffFactor > 10)
             diffFactor = 10;
 
-        uint32 xp = diffFactor * xpentry->Exp[RewardXPDifficulty] / 10;
+        uint32 xp = diffFactor * xpentry->Exp[RewardXPDifficulty] * RewardXPMultiplier / 10;
         if (xp <= 100)
             xp = 5 * ((xp + 2) / 5);
         else if (xp <= 500)
@@ -241,10 +241,14 @@ uint32 Quest::XPValue(uint32 playerLevel) const
     return 0;
 }
 
-uint32 Quest::GetRewMoney() const
+uint32 Quest::MoneyValue(uint8 playerLevel) const
 {
-    if (RewardMoney > 0)
-        return RewardMoney * sWorld->getRate(RATE_MONEY_QUEST);
+    uint8 level;
+    if (playerLevel)
+        level = Level == -1 ? playerLevel : Level;
+
+    if (QuestMoneyRewardEntry const* money = sQuestMoneyRewardStore.LookupEntry(level))
+        return money->Money[GetRewMoneyDifficulty()] * GetMoneyMultiplier();
     else
         return 0;
 }
@@ -253,7 +257,7 @@ void Quest::BuildQuestRewards(WorldPackets::Quest::QuestRewards& rewards, Player
 {
     rewards.ChoiceItemCount         = GetRewChoiceItemsCount();
     rewards.ItemCount               = GetRewItemsCount();
-    rewards.Money                   = GetRewMoney();
+    rewards.Money                   = player->GetQuestMoneyReward(this);
     rewards.XP                      = player->GetQuestXPReward(this);
     rewards.Title                   = GetRewTitle();
     rewards.Talents                 = GetBonusTalents();
@@ -334,7 +338,7 @@ bool Quest::IsAllowedInRaid(Difficulty difficulty) const
     return sWorld->getBoolConfig(CONFIG_QUEST_IGNORE_RAID);
 }
 
-uint32 Quest::CalculateHonorGain(uint8 level) const
+uint32 Quest::CalculateHonorGain(uint8 /*level*/) const
 {
     uint32 honor = 0;
 

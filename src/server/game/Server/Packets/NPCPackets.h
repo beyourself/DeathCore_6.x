@@ -22,6 +22,8 @@
 #include "ItemPackets.h"
 #include "Creature.h"
 
+#include "G3D/Vector2.h"
+
 namespace WorldPackets
 {
     namespace NPC
@@ -32,6 +34,7 @@ namespace WorldPackets
         // CMSG_GOSSIP_HELLO
         // CMSG_LIST_INVENTORY
         // CMSG_TRAINER_LIST
+        // CMSG_BATTLEMASTER_HELLO
         class Hello final : public ClientPacket
         {
         public:
@@ -59,7 +62,7 @@ namespace WorldPackets
             int32 QuestLevel    = 0;
             bool Repeatable     = false;
             std::string QuestTitle;
-            int32 QuestFlags[2];
+            int32 QuestFlags[2] = { };
         };
 
         class GossipMessage final : public ServerPacket
@@ -115,7 +118,7 @@ namespace WorldPackets
         class VendorInventory final : public ServerPacket
         {
         public:
-            VendorInventory() : ServerPacket(SMSG_LIST_INVENTORY, 600) { }
+            VendorInventory() : ServerPacket(SMSG_VENDOR_INVENTORY, 600) { }
 
             WorldPacket const* Write() override;
 
@@ -130,7 +133,7 @@ namespace WorldPackets
             int32 MoneyCost     = 0;
             int32 ReqSkillLine  = 0;
             int32 ReqSkillRank  = 0;
-            int32 ReqAbility[MAX_TRAINERSPELL_ABILITY_REQS];
+            int32 ReqAbility[MAX_TRAINERSPELL_ABILITY_REQS] = { };
             uint8 Usable        = 0;
             uint8 ReqLevel      = 0;
         };
@@ -162,11 +165,80 @@ namespace WorldPackets
         class PlayerTabardVendorActivate final : public ServerPacket
         {
         public:
-            PlayerTabardVendorActivate() : ServerPacket(SMSG_TABARD_VENDOR_ACTIVATE, 16) { }
+            PlayerTabardVendorActivate() : ServerPacket(SMSG_PLAYER_TABARD_VENDOR_ACTIVATE, 16) { }
 
             WorldPacket const* Write() override;
 
             ObjectGuid Vendor;
+        };
+
+        class SuppressNPCGreetings final : public ServerPacket
+        {
+        public:
+            SuppressNPCGreetings() : ServerPacket(SMSG_SUPPRESS_NPC_GREETINGS, 16 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid UnitGUID;
+            bool SuppressNPCGreeting = false;
+        };
+
+        class GossipPOI final : public ServerPacket
+        {
+        public:
+            GossipPOI() : ServerPacket(SMSG_GOSSIP_POI, 2 + 2 * 4 + 4 + 4 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            uint32 Flags        = 0;
+            G3D::Vector2 Pos;
+            int32 Icon          = 0;
+            int32 Importance    = 0;
+            std::string Name;
+        };
+
+        class SpiritHealerActivate final : public ClientPacket
+        {
+        public:
+            SpiritHealerActivate(WorldPacket&& packet) : ClientPacket(CMSG_SPIRIT_HEALER_ACTIVATE, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid Healer;
+        };
+
+        class SpiritHealerConfirm final : public ServerPacket
+        {
+        public:
+            SpiritHealerConfirm() : ServerPacket(SMSG_SPIRIT_HEALER_CONFIRM, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Unit;
+        };
+
+        class TrainerBuySpell final : public ClientPacket
+        {
+        public:
+            TrainerBuySpell(WorldPacket&& packet) : ClientPacket(CMSG_TRAINER_BUY_SPELL, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid TrainerGUID;
+            int32 TrainerID     = 0;
+            int32 SpellID       = 0;
+        };
+
+        class TrainerBuyFailed final : public ServerPacket
+        {
+        public:
+            TrainerBuyFailed() : ServerPacket(SMSG_TRAINER_BUY_FAILED, 16 + 4 + 4) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid TrainerGUID;
+            int32 SpellID               = 0;
+            int32 TrainerFailedReason   = 0;
         };
     }
 }

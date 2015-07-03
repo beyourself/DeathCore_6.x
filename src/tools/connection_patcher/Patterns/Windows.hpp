@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2012-2014 Arctium Emulation <http://arctium.org>
  * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
  *

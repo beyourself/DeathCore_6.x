@@ -29,17 +29,17 @@ namespace WorldPackets
         class LootUnit final : public ClientPacket
         {
         public:
-            LootUnit(WorldPacket&& packet) : ClientPacket(CMSG_LOOT, std::move(packet)) { }
+            LootUnit(WorldPacket&& packet) : ClientPacket(CMSG_LOOT_UNIT, std::move(packet)) { }
 
             void Read() override;
 
             ObjectGuid Unit;
         };
 
-        struct LootItem
+        struct LootItemData
         {
-            uint8 Type              = 0;
-            uint8 UIType            = 0;
+            uint8 Type              = 2;
+            uint8 UIType            = 4;
             uint32 Quantity         = 0;
             uint8 LootItemType      = 0;
             uint8 LootListID        = 0;
@@ -64,16 +64,16 @@ namespace WorldPackets
 
             ObjectGuid LootObj;
             ObjectGuid Owner;
-            uint8 Threshold     = 17; // Most common value
-            uint8 LootMethod    = 0;
-            uint8 AcquireReason = 0;
-            uint8 FailureReason = 2; // Most common value
-            uint32 Coins        = 0;
-            std::vector<LootItem> Items;
+            uint8 Threshold      = 2; // Most common value, 2 = Uncommon
+            uint8 LootMethod     = 0;
+            uint8 AcquireReason  = 0;
+            uint8 FailureReason  = 17; // Most common value
+            uint32 Coins         = 0;
+            std::vector<LootItemData> Items;
             std::vector<LootCurrency> Currencies;
             bool PersonalLooting = false;
             bool Acquired        = false;
-            bool AELooting      = false;
+            bool AELooting       = false;
         };
 
         struct LootRequest
@@ -83,10 +83,10 @@ namespace WorldPackets
         };
 
         // PlayerCliLootItem
-        class AutoStoreLootItem final : public ClientPacket
+        class LootItem final : public ClientPacket
         {
         public:
-            AutoStoreLootItem(WorldPacket&& packet) : ClientPacket(CMSG_AUTOSTORE_LOOT_ITEM, std::move(packet)) { }
+            LootItem(WorldPacket&& packet) : ClientPacket(CMSG_LOOT_ITEM, std::move(packet)) { }
 
             void Read() override;
 
@@ -142,6 +142,29 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             ObjectGuid LootObj;
+        };
+
+        class LootRoll final : public ClientPacket
+        {
+        public:
+            LootRoll(WorldPacket&& packet) : ClientPacket(CMSG_LOOT_ROLL, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid LootObj;
+            uint8 LootListID = 0;
+            uint8 RollType = 0;
+        };
+
+        class LootReleaseResponse final : public ServerPacket
+        {
+        public:
+            LootReleaseResponse() : ServerPacket(SMSG_LOOT_RELEASE, 32) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid LootObj;
+            ObjectGuid Owner;
         };
     }
 }

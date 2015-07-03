@@ -63,11 +63,11 @@ class OutdoorPvPSI : public OutdoorPvP
 
         bool Update(uint32 diff);
 
-        void FillInitialWorldStates(WorldPacket &data);
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
 
         void SendRemoveWorldStates(Player* player);
 
-        bool HandleAreaTrigger(Player* player, uint32 trigger);
+        bool HandleAreaTrigger(Player* player, uint32 trigger, bool entered);
 
         bool HandleDropFlag(Player* player, uint32 spellId);
 

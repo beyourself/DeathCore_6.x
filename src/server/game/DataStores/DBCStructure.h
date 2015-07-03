@@ -29,13 +29,7 @@
 #include <vector>
 
 // Structures using to access raw DBC data and required packing to portability
-
-// GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push, N), also any gcc version not support it at some platform
-#if defined(__GNUC__)
-#pragma pack(1)
-#else
 #pragma pack(push, 1)
-#endif
 
 struct AchievementEntry
 {
@@ -56,12 +50,12 @@ struct AchievementEntry
     uint32      CriteriaTree;                               // 14
 };
 
-struct AchievementCategoryEntry
+struct AnimKitEntry
 {
     uint32      ID;                                         // 0
-    uint32      Parent;                                     // 1 -1 for main category
-    //char*     Name_lang;                                  // 2
-    //uint32    UIOrder;                                    // 3
+    //uint32      OneShotDuration;                          // 1
+    //uint32      OneShotStopAnimKitID;                     // 2
+    //uint32      LowDefAnimKitID;                          // 3
 };
 
 // Temporary define until max depth is found somewhere (adt?)
@@ -78,10 +72,10 @@ struct AreaTableEntry
     //uint32    SoundProviderPrefUnderwater;                // 7,
     //uint32    AmbienceID;                                 // 8,
     //uint32    ZoneMusic;                                  // 9,
-    char*       ZoneName;                                   // 10
+    //char*     ZoneName;                                   // 10 - Internal name
     //uint32    IntroSound;                                 // 11
     uint32      ExplorationLevel;                           // 12
-    //char*     AreaName_lang                               // 13
+    char*       AreaName_lang;                              // 13 - In-game name
     uint32      FactionGroupMask;                           // 14
     uint32      LiquidTypeID[4];                            // 15-18
     //float     AmbientMultiplier;                          // 19
@@ -102,15 +96,6 @@ struct AreaTableEntry
             return true;
         return (Flags[0] & AREA_FLAG_SANCTUARY) != 0;
     }
-};
-
-#define MAX_GROUP_AREA_IDS 6
-
-struct AreaGroupEntry
-{
-    uint32  ID;                                             // 0
-    uint32  AreaID[MAX_GROUP_AREA_IDS];                     // 1-6
-    uint32  NextAreaID;                                     // 7 index of next group
 };
 
 struct AreaTriggerEntry
@@ -168,7 +153,7 @@ struct BarberShopStyleEntry
     uint32      Type;                                       // 1 value 0 -> hair, value 2 -> facialhair
     //char*     DisplayName_lang;                           // 2
     //char*     Description_lang                            // 3
-    //float     CostModifier;                               // 4
+    float       CostModifier;                               // 4
     uint32      Race;                                       // 5
     uint32      Sex;                                        // 6
     uint32      Data;                                       // 7 (real ID to hair/facial hair)
@@ -208,6 +193,34 @@ struct CharStartOutfitEntry
     uint32      PetFamilyID;                                // 30 Pet Family Entry for starting pet
 };
 
+enum CharSectionFlags
+{
+    SECTION_FLAG_PLAYER = 0x01,
+    SECTION_FLAG_DEATH_KNIGHT = 0x04
+};
+
+enum CharSectionType
+{
+    SECTION_TYPE_SKIN = 0,
+    SECTION_TYPE_FACE = 1,
+    SECTION_TYPE_FACIAL_HAIR = 2,
+    SECTION_TYPE_HAIR = 3,
+    SECTION_TYPE_UNDERWEAR = 4
+};
+
+struct CharSectionsEntry
+{
+     //uint32 Id;
+    uint32 Race;
+    uint32 Gender;
+    uint32 GenType;
+    //char* TexturePath[3];
+    uint32 Flags;
+    uint32 Type;
+    uint32 Color;
+};
+
+
 struct CharTitlesEntry
 {
     uint32      ID;                                         // 0, title ids, for example in Quest::GetCharTitleId()
@@ -242,7 +255,7 @@ struct ChrClassesEntry
     uint32      AttackPowerPerStrength;                     // 10 Attack Power bonus per point of strength
     uint32      AttackPowerPerAgility;                      // 11 Attack Power bonus per point of agility
     uint32      RangedAttackPowerPerAgility;                // 12 Ranged Attack Power bonus per point of agility
-    //uint32    DefaultSpec;                                // 13
+    uint32      DefaultSpec;                                // 13
     //uint32    CreateScreenFileDataID;                     // 14
     //uint32    SelectScreenFileDataID;                     // 15
     //uint32    LowResScreenFileDataID;                     // 16
@@ -481,12 +494,15 @@ struct CriteriaEntry
         uint32 ObjectiveId;
 
         // ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA = 31
+        // ACHIEVEMENT_CRITERIA_TYPE_ENTER_AREA             = 163
+        // ACHIEVEMENT_CRITERIA_TYPE_LEAVE_AREA             = 164
         uint32 AreaID;
 
         // ACHIEVEMENT_CRITERIA_TYPE_OWN_ITEM               = 36
         // ACHIEVEMENT_CRITERIA_TYPE_USE_ITEM               = 41
         // ACHIEVEMENT_CRITERIA_TYPE_LOOT_ITEM              = 42
         // ACHIEVEMENT_CRITERIA_TYPE_EQUIP_ITEM             = 57
+        // ACHIEVEMENT_CRITERIA_TYPE_OWN_TOY                = 185
         uint32 ItemID;
 
         // ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_TEAM_RATING    = 38
@@ -531,6 +547,21 @@ struct CriteriaEntry
 
         // ACHIEVEMENT_CRITERIA_TYPE_LOOT_TYPE              = 109
         uint32 LootType;
+
+        // ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER = 165
+        uint32 DungeonEncounterID;
+
+        // ACHIEVEMENT_CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING = 169
+        uint32 GarrBuildingID;
+
+        // ACHIEVEMENT_CRITERIA_TYPE_UPGRADE_GARRISON       = 170
+        uint32 GarrisonLevel;
+
+        // ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_MISSION = 174
+        uint32 GarrMissionID;
+
+        // ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT = 182
+        uint32 CharShipmentContainerID;
     } Asset;                                                // 2
     uint32 StartEvent;                                      // 3
     uint32 StartAsset;                                      // 4
@@ -564,21 +595,6 @@ struct CurrencyCategoryEntry
     //                                                      // 18       string flags
 };
 */
-
-struct CurrencyTypesEntry
-{
-    uint32      ID;                                         // 0
-    uint32      CategoryID;                                 // 1
-    //char*     Name_lang;                                  // 2
-    //char*     InventoryIcon[2];                           // 3-4
-    //uint32    SpellWeight;                                // 5 archaeology-related (?)
-    //uint32    SpellCategory;                              // 6
-    uint32      MaxQty;                                     // 7
-    uint32      MaxEarnablePerWeek;                         // 8
-    uint32      Flags;                                      // 9
-    //uint32    Quality;                                    // 10
-    //char*     Description_lang;                           // 11
-};
 
 struct DestructibleModelDataEntry
 {
@@ -885,11 +901,6 @@ struct GtChanceToSpellCritEntry
     float    ratio;
 };
 
-struct GtOCTClassCombatRatingScalarEntry
-{
-    float    ratio;
-};
-
 struct GtOCTLevelExperienceEntry
 {
     float    Data;
@@ -940,6 +951,33 @@ struct GuildPerkSpellsEntry
     //uint32    ID;                                         // 0
     uint32      GuildLevel;                                 // 1
     uint32      SpellID;                                    // 2
+};
+
+// GuildColorBackground.dbc
+struct GuildColorBackgroundEntry
+{
+    uint32      ID;
+    //uint8       Red;
+    //uint8       Green;
+    //uint8       Blue;
+};
+
+// GuildColorBorder.dbc
+struct GuildColorBorderEntry
+{
+    uint32      ID;
+    //uint8       Red;
+    //uint8       Green;
+    //uint8       Blue;
+};
+
+// GuildColorEmblem.dbc
+struct GuildColorEmblemEntry
+{
+    uint32      ID;
+    //uint8       Red;
+    //uint8       Green;
+    //uint8       Blue;
 };
 
 // ImportPriceArmor.dbc
@@ -1109,6 +1147,24 @@ struct ItemSetSpellEntry
 typedef std::vector<ItemSetSpellEntry const*> ItemSetSpells;
 typedef std::unordered_map<uint32, ItemSetSpells> ItemSetSpellsStore;
 
+struct ItemSpecEntry
+{
+    uint32      ID;                                         // 0
+    uint32      MinLevel;                                   // 1
+    uint32      MaxLevel;                                   // 2
+    uint32      ItemType;                                   // 3
+    uint32      PrimaryStat;                                // 4
+    uint32      SecondaryStat;                              // 5
+    uint32      SpecID;                                     // 6
+};
+
+struct ItemSpecOverrideEntry
+{
+    uint32      ID;                                         // 0
+    uint32      ItemID;                                     // 1
+    uint32      SpecID;                                     // 2
+};
+
 struct LFGDungeonEntry
 {
     uint32      ID;                                         // 0
@@ -1224,13 +1280,13 @@ struct MapEntry
     uint32          RaidOffset;                             // 17
     uint32          MaxPlayers;                             // 18
     int32           ParentMapID;                            // 19 related to phasing
-    //uint32        CosmeticParentMapID                     // 20
+    int32           CosmeticParentMapID;                    // 20
     //uint32        TimeOffset                              // 21
 
     // Helpers
     uint32 Expansion() const { return ExpansionID; }
 
-    bool IsDungeon() const { return InstanceType == MAP_INSTANCE || InstanceType == MAP_RAID; }
+    bool IsDungeon() const { return (InstanceType == MAP_INSTANCE || InstanceType == MAP_RAID) && !IsGarrison(); }
     bool IsNonRaidDungeon() const { return InstanceType == MAP_INSTANCE; }
     bool Instanceable() const { return InstanceType == MAP_INSTANCE || InstanceType == MAP_RAID || InstanceType == MAP_BATTLEGROUND || InstanceType == MAP_ARENA; }
     bool IsRaid() const { return InstanceType == MAP_RAID; }
@@ -1255,6 +1311,7 @@ struct MapEntry
     }
 
     bool IsDynamicDifficultyMap() const { return (Flags & MAP_FLAG_CAN_TOGGLE_DIFFICULTY) != 0; }
+    bool IsGarrison() const { return (Flags & MAP_FLAG_GARRISON) != 0; }
 };
 
 struct MapDifficultyEntry
@@ -1348,6 +1405,12 @@ struct PvPDifficultyEntry
     BattlegroundBracketId GetBracketId() const { return BattlegroundBracketId(BracketID); }
 };
 
+struct QuestMoneyRewardEntry
+{
+    uint32      Level;                                      // 0
+    uint32      Money[10];                                  // 1
+};
+
 struct QuestSortEntry
 {
     uint32      ID;                                         // 0
@@ -1429,11 +1492,11 @@ struct SkillRaceClassInfoEntry
 {
     //uint32    ID;                                         // 0
     uint32      SkillID;                                    // 1
-    uint32      RaceMask;                                   // 2
-    uint32      ClassMask;                                  // 3
+    int32       RaceMask;                                   // 2
+    int32       ClassMask;                                  // 3
     uint32      Flags;                                      // 4
-    //uint32    Availability;                               // 5
-    //uint32    MinLevel;                                   // 6
+    uint32      Availability;                               // 5
+    uint32      MinLevel;                                   // 6
     uint32      SkillTierID;                                // 7
 };
 
@@ -1443,28 +1506,6 @@ struct SkillTiersEntry
 {
     uint32      ID;                                         // 0
     uint32      Value[MAX_SKILL_STEP];                      // 1-16
-};
-
-struct SoundEntriesEntry
-{
-    uint32      ID;                                         // 0
-    //uint32    SoundType;                                  // 1
-    //char*     Name;                                       // 2
-    //uint32    FileDataID[20];                             // 3-22
-    //uint32    Freq[20];                                   // 23-42
-    //float     VolumeFloat;                                // 43
-    //uint32    Flags;                                      // 44
-    //float     MinDistance;                                // 45
-    //float     DistanceCutoff;                             // 46
-    //uint32    EAXDef;                                     // 47
-    //uint32    SoundEntriesAdvancedID;                     // 48
-    //float     VolumeVariationPlus;                        // 49
-    //float     VolumeVariationMinus;                       // 50
-    //float     PitchVariationPlus;                         // 51
-    //float     PitchVariationMinus;                        // 52
-    //float     PitchAdjust;                                // 53
-    //uint32    DialogType;                                 // 54
-    //uint32    BusOverwriteID;                             // 55
 };
 
 // SpecializationSpells.dbc
@@ -1615,8 +1656,8 @@ struct SpellRadiusEntry
 {
     uint32      ID;                                         // 0
     //float     Radius;                                     // 1
-    float       RadiusMin;                                  // 2
-    float       RadiusPerLevel;                             // 3
+    float       RadiusPerLevel;                             // 2
+    float       RadiusMin;                                  // 3
     float       RadiusMax;                                  // 4
 };
 
@@ -2063,12 +2104,7 @@ struct WorldStateUI
 };
 */
 
-// GCC have alternative #pragma pack() syntax and old gcc version not support pack(pop), also any gcc version not support it at some platform
-#if defined(__GNUC__)
-#pragma pack()
-#else
 #pragma pack(pop)
-#endif
 
 struct VectorArray
 {

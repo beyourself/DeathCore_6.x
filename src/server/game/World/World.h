@@ -151,9 +151,11 @@ enum WorldBoolConfigs
     CONFIG_SHOW_MUTE_IN_WORLD,
     CONFIG_SHOW_BAN_IN_WORLD,
     CONFIG_AUTOBROADCAST,
-    CONFIG_TICKET_SYSTEM_STATUS,
-    CONFIG_TICKET_SUBMIT_TICKET,
-    CONFIG_TICKET_SUBMIT_BUG,
+    CONFIG_SUPPORT_ENABLED,
+    CONFIG_SUPPORT_TICKETS_ENABLED,
+    CONFIG_SUPPORT_BUGS_ENABLED,
+    CONFIG_SUPPORT_COMPLAINTS_ENABLED,
+    CONFIG_SUPPORT_SUGGESTIONS_ENABLED,
     CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES,
     CONFIG_PRESERVE_CUSTOM_CHANNELS,
     CONFIG_PDUMP_NO_PATHS,
@@ -573,14 +575,15 @@ class World
 
         WorldSession* FindSession(uint32 id) const;
         void AddSession(WorldSession* s);
+        void AddInstanceSocket(std::shared_ptr<WorldSocket> sock, uint32 sessionAccountId);
         void SendAutoBroadcast();
         bool RemoveSession(uint32 id);
         /// Get the number of current active sessions
         void UpdateMaxSessionCounters();
         const SessionMap& GetAllSessions() const { return m_sessions; }
-        uint32 GetActiveAndQueuedSessionCount() const { return m_sessions.size(); }
-        uint32 GetActiveSessionCount() const { return m_sessions.size() - m_QueuedPlayer.size(); }
-        uint32 GetQueuedSessionCount() const { return m_QueuedPlayer.size(); }
+        uint32 GetActiveAndQueuedSessionCount() const { return uint32(m_sessions.size()); }
+        uint32 GetActiveSessionCount() const { return uint32(m_sessions.size() - m_QueuedPlayer.size()); }
+        uint32 GetQueuedSessionCount() const { return uint32(m_QueuedPlayer.size()); }
         /// Get the maximum number of parallel sessions on the server since last reboot
         uint32 GetMaxQueuedSessionCount() const { return m_maxQueuedSessionCount; }
         uint32 GetMaxActiveSessionCount() const { return m_maxActiveSessionCount; }
@@ -668,7 +671,7 @@ class World
         void SendWorldText(uint32 string_id, ...);
         void SendGlobalText(const char* text, WorldSession* self);
         void SendGMText(uint32 string_id, ...);
-        void SendServerMessage(ServerMessageType type, const char *text = "", Player* player = NULL);
+        void SendServerMessage(ServerMessageType messageID, std::string stringParam = "", Player* player = NULL);
         void SendGlobalMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
         void SendGlobalGMMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
         bool SendZoneMessage(uint32 zone, WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
@@ -769,7 +772,8 @@ class World
         void LoadDBVersion();
         char const* GetDBVersion() const { return m_DBVersion.c_str(); }
 
-        void RecordTimeDiff(const char * text, ...);
+        void ResetTimeDiffRecord();
+        void RecordTimeDiff(std::string const& text);
 
         void LoadAutobroadcasts();
 
@@ -801,7 +805,7 @@ class World
         void InitRandomBGResetTime();
         void InitGuildResetTime();
         void InitCurrencyResetTime();
-        void ResetDailyQuests();
+        void DailyReset();
         void ResetWeeklyQuests();
         void ResetMonthlyQuests();
         void ResetRandomBG();
@@ -879,6 +883,9 @@ class World
         // sessions that are added async
         void AddSession_(WorldSession* s);
         LockedQueue<WorldSession*> addSessQueue;
+
+        void ProcessLinkInstanceSocket(std::pair<std::shared_ptr<WorldSocket>, uint32> linkInfo);
+        LockedQueue<std::pair<std::shared_ptr<WorldSocket>, uint32>> _linkSocketQueue;
 
         // used versions
         std::string m_DBVersion;

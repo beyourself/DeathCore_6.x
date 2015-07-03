@@ -98,7 +98,7 @@ enum LfgJoinResult
     LFG_JOIN_GROUPFULL                           = 0x1C,   // Your group is full
     LFG_JOIN_INTERNAL_ERROR                      = 0x1E,   // Internal LFG Error
     LFG_JOIN_NOT_MEET_REQS                       = 0x1F,   // You do not meet the requirements for the chosen dungeons
-    //LFG_JOIN_PARTY_NOT_MEET_REQS                 = 6,      // One or more party members do not meet the requirements for the chosen dungeons
+    LFG_JOIN_PARTY_NOT_MEET_REQS                 = 6,      // One or more party members do not meet the requirements for the chosen dungeons (FIXME)
     LFG_JOIN_MIXED_RAID_DUNGEON                  = 0x20,   // You cannot mix dungeons, raids, and random when picking dungeons
     LFG_JOIN_MULTI_REALM                         = 0x21,   // The dungeon you chose does not support players from multiple realms
     LFG_JOIN_DISCONNECTED                        = 0x22,   // One or more party members are pending invites or disconnected
@@ -272,15 +272,15 @@ struct LFGDungeonData
         requiredItemLevel(0)
         { }
     LFGDungeonData(LFGDungeonEntry const* dbc): id(dbc->ID), name(dbc->Name_lang), map(dbc->MapID),
-        type(dbc->Type), expansion(dbc->Expansion), group(dbc->GroupID),
-        minlevel(dbc->MinLevel), maxlevel(dbc->MaxLevel), difficulty(Difficulty(dbc->DifficultyID)),
+        type(uint8(dbc->Type)), expansion(uint8(dbc->Expansion)), group(uint8(dbc->GroupID)),
+        minlevel(uint8(dbc->MinLevel)), maxlevel(uint8(dbc->MaxLevel)), difficulty(Difficulty(dbc->DifficultyID)),
         seasonal((dbc->Flags & LFG_FLAG_SEASONAL) != 0), x(0.0f), y(0.0f), z(0.0f), o(0.0f),
         requiredItemLevel(0)
         { }
 
     uint32 id;
     std::string name;
-    uint16 map;
+    uint32 map;
     uint8 type;
     uint8 expansion;
     uint8 group;
@@ -328,6 +328,8 @@ class LFGMgr
         LfgDungeonSet const& GetSelectedDungeons(ObjectGuid guid);
         /// Get current lfg state
         LfgState GetState(ObjectGuid guid);
+        /// Get current vote kick state
+        bool IsVoteKickActive(ObjectGuid gguid);
         /// Get current dungeon
         uint32 GetDungeon(ObjectGuid guid, bool asId = true);
         /// Get the map id of the current dungeon
@@ -435,6 +437,7 @@ class LFGMgr
         void SetSelectedDungeons(ObjectGuid guid, LfgDungeonSet const& dungeons);
         void DecreaseKicksLeft(ObjectGuid guid);
         void SetState(ObjectGuid guid, LfgState state);
+        void SetVoteKick(ObjectGuid gguid, bool active);
         void RemovePlayerData(ObjectGuid guid);
         void GetCompatibleDungeons(LfgDungeonSet& dungeons, GuidSet const& players, LfgLockPartyMap& lockMap, bool isContinue);
         void _SaveToDB(ObjectGuid guid, uint32 db_guid);

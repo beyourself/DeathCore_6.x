@@ -17,12 +17,24 @@
 
 #include "GameObjectPackets.h"
 
-void WorldPackets::GameObject::GameObjectUse::Read()
+void WorldPackets::GameObject::GameObjUse::Read()
 {
     _worldPacket >> Guid;
 }
 
-void WorldPackets::GameObject::GameObjectReportUse::Read()
+void WorldPackets::GameObject::GameObjReportUse::Read()
 {
     _worldPacket >> Guid;
+}
+
+WorldPacket const* WorldPackets::GameObject::GameObjectDespawn::Write()
+{
+    _worldPacket << ObjectGUID;
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::GameObject::PageText::Write()
+{
+    _worldPacket << GameObjectGUID;
+    return &_worldPacket;
 }

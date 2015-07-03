@@ -531,11 +531,10 @@ struct BattlegroundSAScore final : public BattlegroundScore
             }
         }
 
-        void BuildObjectivesBlock(WorldPacket& data, ByteBuffer& content) final override
+        void BuildObjectivesBlock(std::vector<int32>& stats) override
         {
-            data.WriteBits(2, 24); // Objectives Count
-            content << uint32(DemolishersDestroyed);
-            content << uint32(GatesDestroyed);
+            stats.push_back(DemolishersDestroyed);
+            stats.push_back(GatesDestroyed);
         }
 
         uint32 GetAttr1() const final override { return DemolishersDestroyed; }
@@ -569,7 +568,7 @@ class BattlegroundSA : public Battleground
         bool SetupBattleground() override;
         void Reset() override;
         /// Called for generate packet contain worldstate data
-        void FillInitialWorldStates(WorldPacket& data) override;
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
         /// Called when a player kill a unit in bg
         void HandleKillUnit(Creature* creature, Player* killer) override;
         /// Return the nearest graveyard where player can respawn
@@ -595,7 +594,7 @@ class BattlegroundSA : public Battleground
 
         /// Called when a player leave battleground
         void RemovePlayer(Player* player, ObjectGuid guid, uint32 team) override;
-        void HandleAreaTrigger(Player* Source, uint32 Trigger) override;
+        void HandleAreaTrigger(Player* source, uint32 trigger, bool entered) override;
 
         /* Scorekeeping */
 
@@ -620,6 +619,7 @@ class BattlegroundSA : public Battleground
          * -Teleport all players to good location
          */
         void TeleportPlayers();
+        void TeleportToEntrancePosition(Player* player);
         /**
          * \brief Called on start and between the two round
          * -Update faction of all vehicle
@@ -627,6 +627,11 @@ class BattlegroundSA : public Battleground
         void OverrideGunFaction();
         /// Set selectable or not demolisher, called on battle start, when boats arrive to dock
         void DemolisherStartState(bool start);
+        /// Checks if a player can interact with the given object
+        bool CanInteractWithObject(uint32 objectId);
+        /// Updates interaction flags of specific objects
+        void UpdateObjectInteractionFlags(uint32 objectId);
+        void UpdateObjectInteractionFlags();
         /**
          * \brief Called when a gate is destroy
          * -Give honor to player witch destroy it

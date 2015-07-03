@@ -190,16 +190,16 @@ void Guild::BankEventLogEntry::WritePacket(WorldPackets::Guild:: GuildBankLogQue
     bankLogEntry.EntryType = int8(m_eventType);
 
     if (hasStack)
-        bankLogEntry.Count.Set(int32(m_itemStackCount));
+        bankLogEntry.Count = int32(m_itemStackCount);
 
     if (IsMoneyEvent())
-        bankLogEntry.Money.Set(uint64(m_itemOrMoney));
+        bankLogEntry.Money = uint64(m_itemOrMoney);
 
     if (hasItem)
-        bankLogEntry.ItemID.Set(int32(m_itemOrMoney));
+        bankLogEntry.ItemID = int32(m_itemOrMoney);
 
     if (itemMoved)
-        bankLogEntry.OtherTab.Set(int8(m_destTabId));
+        bankLogEntry.OtherTab = int8(m_destTabId);
 
     packet.Entry.push_back(bankLogEntry);
 }
@@ -236,7 +236,7 @@ void Guild::NewsLogEntry::WritePacket(WorldPackets::Guild::GuildNews& newsPacket
     {
         WorldPackets::Item::ItemInstance itemInstance;
         itemInstance.ItemID = GetValue();
-        newsEvent.Item.Set(itemInstance);
+        newsEvent.Item = itemInstance;
     }
 
     newsPacket.NewsEvents.push_back(newsEvent);
@@ -678,13 +678,23 @@ void EmblemInfo::ReadPacket(WorldPackets::Guild::SaveGuildEmblem& packet)
     m_backgroundColor = packet.Bg;
 }
 
-void EmblemInfo::LoadFromDB(Field* fields)
+bool EmblemInfo::ValidateEmblemColors()
+{
+    return sGuildColorBackgroundStore.LookupEntry(m_backgroundColor) &&
+           sGuildColorBorderStore.LookupEntry(m_borderColor) &&
+           sGuildColorEmblemStore.LookupEntry(m_color);
+        
+}
+
+bool EmblemInfo::LoadFromDB(Field* fields)
 {
     m_style             = fields[3].GetUInt8();
     m_color             = fields[4].GetUInt8();
     m_borderStyle       = fields[5].GetUInt8();
     m_borderColor       = fields[6].GetUInt8();
     m_backgroundColor   = fields[7].GetUInt8();
+        
+    return ValidateEmblemColors();
 }
 
 void EmblemInfo::SaveToDB(ObjectGuid::LowType guildId) const
@@ -1313,25 +1323,25 @@ void Guild::SendQueryResponse(WorldSession* session)
 {
     WorldPackets::Guild::QueryGuildInfoResponse response;
     response.GuildGuid = GetGUID();
-    response.Info.HasValue = true;
+    response.Info = boost::in_place();
 
-    response.Info.Value.GuildGUID = GetGUID();
-    response.Info.Value.VirtualRealmAddress = GetVirtualRealmAddress();
+    response.Info->GuildGUID = GetGUID();
+    response.Info->VirtualRealmAddress = GetVirtualRealmAddress();
 
-    response.Info.Value.EmblemStyle = m_emblemInfo.GetStyle();
-    response.Info.Value.EmblemColor = m_emblemInfo.GetColor();
-    response.Info.Value.BorderStyle = m_emblemInfo.GetBorderStyle();
-    response.Info.Value.BorderColor = m_emblemInfo.GetBorderColor();
-    response.Info.Value.BackgroundColor = m_emblemInfo.GetBackgroundColor();
+    response.Info->EmblemStyle = m_emblemInfo.GetStyle();
+    response.Info->EmblemColor = m_emblemInfo.GetColor();
+    response.Info->BorderStyle = m_emblemInfo.GetBorderStyle();
+    response.Info->BorderColor = m_emblemInfo.GetBorderColor();
+    response.Info->BackgroundColor = m_emblemInfo.GetBackgroundColor();
 
     for (uint8 i = 0; i < _GetRanksSize(); ++i)
     {
         WorldPackets::Guild::QueryGuildInfoResponse::GuildInfo::GuildInfoRank info
             (m_ranks[i].GetId(), i, m_ranks[i].GetName());
-        response.Info.Value.Ranks.insert(info);
+        response.Info->Ranks.insert(info);
     }
 
-    response.Info.Value.GuildName = m_name;
+    response.Info->GuildName = m_name;
 
     session->SendPacket(response.Write());
     TC_LOG_DEBUG("guild", "SMSG_GUILD_QUERY_RESPONSE [%s]", session->GetPlayerInfo().c_str());
@@ -1602,11 +1612,11 @@ void Guild::HandleInviteMember(WorldSession* session, std::string const& name)
     }
 
     // Invited player cannot be in another guild
-    /*if (pInvitee->GetGuildId())
+    if (pInvitee->GetGuildId())
     {
         SendCommandResult(session, GUILD_COMMAND_INVITE_PLAYER, ERR_ALREADY_IN_GUILD_S, name);
         return;
-    }*/
+    }
 
     // Invited player cannot be invited
     if (pInvitee->GetGuildIdInvited())
@@ -1688,10 +1698,10 @@ void Guild::HandleLeaveMember(WorldSession* session)
     }
     else
     {
-        DeleteMember(player->GetGUID(), false, false);
-
         _LogEvent(GUILD_EVENT_LOG_LEAVE_GUILD, player->GetGUID().GetCounter());
-        SendEventPlayerLeft(player);
+        SendEventPlayerLeft(GetMember(player->GetGUID()));
+
+        DeleteMember(player->GetGUID(), false, false);
 
         SendCommandResult(session, GUILD_COMMAND_LEAVE_GUILD, ERR_GUILD_COMMAND_SUCCESS, m_name);
     }
@@ -1724,12 +1734,11 @@ void Guild::HandleRemoveMember(WorldSession* session, ObjectGuid guid)
                 SendCommandResult(session, GUILD_COMMAND_REMOVE_PLAYER, ERR_GUILD_RANK_TOO_HIGH_S, name);
             else
             {
+                _LogEvent(GUILD_EVENT_LOG_UNINVITE_PLAYER, player->GetGUID().GetCounter(), guid.GetCounter());
+                SendEventPlayerLeft(member, memberMe, true);
+
                 // After call to DeleteMember pointer to member becomes invalid
                 DeleteMember(guid, false, true);
-                _LogEvent(GUILD_EVENT_LOG_UNINVITE_PLAYER, player->GetGUID().GetCounter(), guid.GetCounter());
-
-                Player* pMember = ObjectAccessor::FindConnectedPlayer(guid);
-                SendEventPlayerLeft(pMember, player, true);
 
                 SendCommandResult(session, GUILD_COMMAND_REMOVE_PLAYER, ERR_GUILD_COMMAND_SUCCESS, name);
             }
@@ -2204,7 +2213,7 @@ void Guild::SendEventNewLeader(Member* newLeader, Member* oldLeader, bool isSelf
     BroadcastPacket(eventPacket.Write());
 }
 
-void Guild::SendEventPlayerLeft(Player* leaver, Player* remover, bool isRemoved)
+void Guild::SendEventPlayerLeft(Member* leaver, Member* remover, bool isRemoved)
 {
     WorldPackets::Guild::GuildEventPlayerLeft eventPacket;
     eventPacket.Removed = isRemoved;
@@ -2245,7 +2254,14 @@ bool Guild::LoadFromDB(Field* fields)
     m_id            = fields[0].GetUInt64();
     m_name          = fields[1].GetString();
     m_leaderGuid    = ObjectGuid::Create<HighGuid::Player>(fields[2].GetUInt64());
-    m_emblemInfo.LoadFromDB(fields);
+
+    if (!m_emblemInfo.LoadFromDB(fields))
+    {
+        TC_LOG_ERROR("guild", "Guild " UI64FMTD " has invalid emblem colors (Background: %u, Border: %u, Emblem: %u), skipped.", 
+            m_id, m_emblemInfo.GetBackgroundColor(), m_emblemInfo.GetBorderColor(), m_emblemInfo.GetColor());
+        return false;
+    }
+
     m_info          = fields[8].GetString();
     m_motd          = fields[9].GetString();
     m_createdDate   = time_t(fields[10].GetUInt32());
@@ -2467,7 +2483,7 @@ void Guild::BroadcastToGuild(WorldSession* session, bool officerOnly, std::strin
     if (session && session->GetPlayer() && _HasRankRight(session->GetPlayer(), officerOnly ? GR_RIGHT_OFFCHATSPEAK : GR_RIGHT_GCHATSPEAK))
     {
         WorldPackets::Chat::Chat packet;
-        packet.Initalize(officerOnly ? CHAT_MSG_OFFICER : CHAT_MSG_GUILD, Language(language), session->GetPlayer(), nullptr, msg);
+        packet.Initialize(officerOnly ? CHAT_MSG_OFFICER : CHAT_MSG_GUILD, Language(language), session->GetPlayer(), nullptr, msg);
         WorldPacket const* data = packet.Write();
         for (Members::const_iterator itr = m_members.begin(); itr != m_members.end(); ++itr)
             if (Player* player = itr->second->FindConnectedPlayer())
@@ -2482,7 +2498,7 @@ void Guild::BroadcastAddonToGuild(WorldSession* session, bool officerOnly, std::
     if (session && session->GetPlayer() && _HasRankRight(session->GetPlayer(), officerOnly ? GR_RIGHT_OFFCHATSPEAK : GR_RIGHT_GCHATSPEAK))
     {
         WorldPackets::Chat::Chat packet;
-        packet.Initalize(officerOnly ? CHAT_MSG_OFFICER : CHAT_MSG_GUILD, LANG_ADDON, session->GetPlayer(), nullptr, msg, 0, "", DEFAULT_LOCALE, prefix);
+        packet.Initialize(officerOnly ? CHAT_MSG_OFFICER : CHAT_MSG_GUILD, LANG_ADDON, session->GetPlayer(), nullptr, msg, 0, "", DEFAULT_LOCALE, prefix);
         WorldPacket const* data = packet.Write();
         for (Members::const_iterator itr = m_members.begin(); itr != m_members.end(); ++itr)
             if (Player* player = itr->second->FindPlayer())
@@ -2520,7 +2536,7 @@ void Guild::MassInviteToEvent(WorldSession* session, uint32 minLevel, uint32 max
 {
     uint32 count = 0;
 
-    WorldPacket data(SMSG_CALENDAR_FILTER_GUILD);
+    WorldPacket data(SMSG_CALENDAR_EVENT_INITIAL_INVITES);
     data << uint32(count); // count placeholder
 
     for (Members::const_iterator itr = m_members.begin(); itr != m_members.end(); ++itr)
@@ -2539,7 +2555,7 @@ void Guild::MassInviteToEvent(WorldSession* session, uint32 minLevel, uint32 max
         if (member->GetGUID() != session->GetPlayer()->GetGUID() && level >= minLevel && level <= maxLevel && member->IsRankNotLower(minRank))
         {
             data << member->GetGUID().WriteAsPacked();
-            data << uint8(0); // unk
+            data << uint8(level);
             ++count;
         }
     }
@@ -2638,8 +2654,6 @@ bool Guild::AddMember(ObjectGuid guid, uint8 rankId)
 
 void Guild::DeleteMember(ObjectGuid guid, bool isDisbanding, bool isKicked, bool canDeleteGuild)
 {
-    Player* player = ObjectAccessor::FindConnectedPlayer(guid);
-
     // Guild master can be deleted when loading guild and guid doesn't exist in characters table
     // or when he is removed from guild by gm command
     if (m_leaderGuid == guid && !isDisbanding)
@@ -2672,17 +2686,18 @@ void Guild::DeleteMember(ObjectGuid guid, bool isDisbanding, bool isKicked, bool
         if (oldLeader)
         {
             SendEventNewLeader(newLeader, oldLeader, true);
-            SendEventPlayerLeft(player);
+            SendEventPlayerLeft(oldLeader);
         }
     }
     // Call script on remove before member is actually removed from guild (and database)
-    sScriptMgr->OnGuildRemoveMember(this, player, isDisbanding, isKicked);
+    sScriptMgr->OnGuildRemoveMember(this, guid, isDisbanding, isKicked);
 
     if (Member* member = GetMember(guid))
         delete member;
     m_members.erase(guid);
 
     // If player not online data in data field will be loaded from guild tabs no need to update it !!
+    Player* player = ObjectAccessor::FindConnectedPlayer(guid);
     if (player)
     {
         player->SetInGuild(UI64LIT(0));
@@ -3213,7 +3228,7 @@ void Guild::_SendBankContentUpdate(uint8 tabId, SlotIds slots) const
             {
                 uint32 enchants = 0;
                 for (uint32 ench = 0; ench < MAX_ENCHANTMENT_SLOT; ++ench)
-                    if (uint32 enchantId = tabItem->GetEnchantmentId(EnchantmentSlot(ench)))
+                    if (tabItem->GetEnchantmentId(EnchantmentSlot(ench)))
                         ++enchants;
 
                 itemInfo.SocketEnchant.reserve(enchants);
@@ -3301,7 +3316,7 @@ void Guild::SendBankList(WorldSession* session, uint8 tabId, bool fullUpdate) co
 
                     uint32 enchants = 0;
                     for (uint32 ench = 0; ench < MAX_ENCHANTMENT_SLOT; ++ench)
-                        if (uint32 enchantId = tabItem->GetEnchantmentId(EnchantmentSlot(ench)))
+                        if (tabItem->GetEnchantmentId(EnchantmentSlot(ench)))
                             ++enchants;
 
                     itemInfo.SocketEnchant.reserve(enchants);

@@ -29,7 +29,7 @@ namespace WorldPackets
         class AttackSwing final : public ClientPacket
         {
         public:
-            AttackSwing(WorldPacket&& packet) : ClientPacket(CMSG_ATTACKSWING, std::move(packet)) { }
+            AttackSwing(WorldPacket&& packet) : ClientPacket(CMSG_ATTACK_SWING, std::move(packet)) { }
 
             void Read() override;
 
@@ -39,8 +39,8 @@ namespace WorldPackets
         class AttackSwingError final : public ServerPacket
         {
         public:
-            AttackSwingError() : ServerPacket(SMSG_ATTACKSWING_ERROR, 4) { }
-            AttackSwingError(AttackSwingErr reason) : ServerPacket(SMSG_ATTACKSWING_ERROR, 4), Reason(reason) { }
+            AttackSwingError() : ServerPacket(SMSG_ATTACK_SWING_ERROR, 4) { }
+            AttackSwingError(AttackSwingErr reason) : ServerPacket(SMSG_ATTACK_SWING_ERROR, 4), Reason(reason) { }
 
             WorldPacket const* Write() override;
 
@@ -50,7 +50,7 @@ namespace WorldPackets
         class AttackStop final : public ClientPacket
         {
         public:
-            AttackStop(WorldPacket&& packet) : ClientPacket(CMSG_ATTACKSTOP, std::move(packet)) { }
+            AttackStop(WorldPacket&& packet) : ClientPacket(CMSG_ATTACK_STOP, std::move(packet)) { }
 
             void Read() override { }
         };
@@ -58,7 +58,7 @@ namespace WorldPackets
         class AttackStart final : public ServerPacket
         {
         public:
-            AttackStart() : ServerPacket(SMSG_ATTACKSTART, 16) { }
+            AttackStart() : ServerPacket(SMSG_ATTACK_START, 16) { }
 
             WorldPacket const* Write() override;
 
@@ -69,7 +69,7 @@ namespace WorldPackets
         class SAttackStop final : public ServerPacket
         {
         public:
-            SAttackStop() : ServerPacket(SMSG_ATTACKSTOP, 16 + 16 + 1) { }
+            SAttackStop() : ServerPacket(SMSG_ATTACK_STOP, 16 + 16 + 1) { }
             SAttackStop(Unit const* attacker, Unit const* victim);
 
             WorldPacket const* Write() override;
@@ -158,7 +158,7 @@ namespace WorldPackets
         class AttackerStateUpdate final : public ServerPacket
         {
         public:
-            AttackerStateUpdate() : ServerPacket(SMSG_ATTACKERSTATEUPDATE, 70) { }
+            AttackerStateUpdate() : ServerPacket(SMSG_ATTACKER_STATE_UPDATE, 70) { }
 
             WorldPacket const* Write() override;
 
@@ -214,6 +214,49 @@ namespace WorldPackets
 
             int32 CurrentSheathState = 0;
             bool Animate = true;
+        };
+
+        class CancelAutoRepeat final : public ServerPacket
+        {
+        public:
+            CancelAutoRepeat() : ServerPacket(SMSG_CANCEL_AUTO_REPEAT, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Guid;
+        };
+
+        class HealthUpdate final : public ServerPacket
+        {
+        public:
+            HealthUpdate() : ServerPacket(SMSG_HEALTH_UPDATE, 16 + 4) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Guid;
+            int32 Health = 0;
+        };
+
+        class ThreatClear final : public ServerPacket
+        {
+        public:
+            ThreatClear() : ServerPacket(SMSG_THREAT_CLEAR, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid UnitGUID;
+        };
+
+        class PvPCredit final : public ServerPacket
+        {
+        public:
+            PvPCredit() : ServerPacket(SMSG_PVP_CREDIT, 4 + 16 + 4) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Target;
+            int32 Honor = 0;
+            int32 Rank = 0;
         };
     }
 }

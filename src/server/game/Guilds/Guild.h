@@ -266,9 +266,10 @@ class EmblemInfo
 public:
     EmblemInfo() : m_style(0), m_color(0), m_borderStyle(0), m_borderColor(0), m_backgroundColor(0) { }
 
-    void LoadFromDB(Field* fields);
+    bool LoadFromDB(Field* fields);
     void SaveToDB(ObjectGuid::LowType guildId) const;
     void ReadPacket(WorldPackets::Guild::SaveGuildEmblem& packet);
+    bool ValidateEmblemColors();
 
     uint32 GetStyle() const { return m_style; }
     uint32 GetColor() const { return m_color; }
@@ -765,7 +766,7 @@ public:
     std::string const& GetName() const { return m_name; }
     std::string const& GetMOTD() const { return m_motd; }
     std::string const& GetInfo() const { return m_info; }
-    uint32 GetMemberCount() const { return m_members.size(); }
+    uint32 GetMemberCount() const { return uint32(m_members.size()); }
     time_t GetCreatedDate() const { return m_createdDate; }
     uint64 GetBankMoney() const { return m_bankMoney; }
 
@@ -817,7 +818,7 @@ public:
     void SendEventBankMoneyChanged();
     void SendEventMOTD(WorldSession* session, bool broadcast = false);
     void SendEventNewLeader(Member* newLeader, Member* oldLeader, bool isSelfPromoted = false);
-    void SendEventPlayerLeft(Player* leaver, Player* remover = nullptr, bool isRemoved = false);
+    void SendEventPlayerLeft(Member* leaver, Member* remover = nullptr, bool isRemoved = false);
     void SendEventPresenceChanged(WorldSession* session, bool loggedOn, bool broadcast = false);
 
     // Load from DB
@@ -856,7 +857,7 @@ public:
     void DeleteMember(ObjectGuid guid, bool isDisbanding = false, bool isKicked = false, bool canDeleteGuild = false);
     bool ChangeMemberRank(ObjectGuid guid, uint8 newRank);
     bool IsMember(ObjectGuid guid) const;
-    uint32 GetMembersCount() { return m_members.size(); }
+    uint32 GetMembersCount() { return uint32(m_members.size()); }
 
     // Bank
     void SwapItems(Player* player, uint8 tabId, uint8 slotId, uint8 destTabId, uint8 destSlotId, uint32 splitedAmount);

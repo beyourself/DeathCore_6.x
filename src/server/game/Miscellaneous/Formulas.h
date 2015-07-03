@@ -132,7 +132,7 @@ namespace Trinity
                 if (nLevelDiff > 4)
                     nLevelDiff = 4;
 
-                baseGain = round(BaseExpPlayer->Data * (1 + 0.05f * nLevelDiff));
+                baseGain = uint32(round(BaseExpPlayer->Data * (1 + 0.05f * nLevelDiff)));
             }
             else
             {
@@ -140,7 +140,7 @@ namespace Trinity
                 if (mob_level > gray_level)
                 {
                     uint8 ZD = GetZeroDifference(pl_level);
-                    baseGain = round(BaseExpMob->Data * ((1 - ((pl_level - mob_level) / float(ZD))) * (CoefMob->Data / CoefPlayer->Data)));
+                    baseGain = uint32(round(BaseExpMob->Data * ((1 - ((pl_level - mob_level) / float(ZD))) * (CoefMob->Data / CoefPlayer->Data))));
                 }
                 else
                     baseGain = 0;
@@ -195,7 +195,8 @@ namespace Trinity
             if (isRaid)
             {
                 // FIXME: Must apply decrease modifiers depending on raid size.
-                rate = 1.0f;
+                // set to < 1 to, so client will display raid related strings
+                rate = 0.99f;
             }
             else
             {

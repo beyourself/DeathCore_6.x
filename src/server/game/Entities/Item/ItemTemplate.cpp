@@ -20,6 +20,7 @@
 #include "DB2Stores.h"
 #include "World.h"
 #include "ItemTemplate.h"
+#include "Player.h"
 
 char const* ItemTemplate::GetName(LocaleConstant locale) const
 {
@@ -36,7 +37,7 @@ char const* ItemTemplate::GetDefaultLocaleName() const
 
 uint32 ItemTemplate::GetArmor(uint32 itemLevel) const
 {
-    uint32 quality = GetQuality() != ITEM_QUALITY_HEIRLOOM ? GetQuality() : ITEM_QUALITY_RARE;
+    uint32 quality = ItemQualities(GetQuality()) != ITEM_QUALITY_HEIRLOOM ? ItemQualities(GetQuality()) : ITEM_QUALITY_RARE;
     if (quality > ITEM_QUALITY_ARTIFACT)
         return 0;
 
@@ -73,7 +74,7 @@ uint32 ItemTemplate::GetArmor(uint32 itemLevel) const
 void ItemTemplate::GetDamage(uint32 itemLevel, float& minDamage, float& maxDamage) const
 {
     minDamage = maxDamage = 0.0f;
-    uint32 quality = GetQuality() != ITEM_QUALITY_HEIRLOOM ? GetQuality() : ITEM_QUALITY_RARE;
+    uint32 quality = ItemQualities(GetQuality()) != ITEM_QUALITY_HEIRLOOM ? ItemQualities(GetQuality()) : ITEM_QUALITY_RARE;
     if (GetClass() != ITEM_CLASS_WEAPON || quality > ITEM_QUALITY_ARTIFACT)
         return;
 
@@ -88,7 +89,7 @@ void ItemTemplate::GetDamage(uint32 itemLevel, float& minDamage, float& maxDamag
             store = &sItemDamageAmmoStore;
             break;
         case INVTYPE_2HWEAPON:
-            if (GetFlags2() & ITEM_FLAGS_EXTRA_CASTER_WEAPON)
+            if (GetFlags2() & ITEM_FLAG2_CASTER_WEAPON)
                 store = &sItemDamageTwoHandCasterStore;
             else
                 store = &sItemDamageTwoHandStore;
@@ -116,7 +117,7 @@ void ItemTemplate::GetDamage(uint32 itemLevel, float& minDamage, float& maxDamag
         case INVTYPE_WEAPON:
         case INVTYPE_WEAPONMAINHAND:
         case INVTYPE_WEAPONOFFHAND:
-            if (GetFlags2() & ITEM_FLAGS_EXTRA_CASTER_WEAPON)
+            if (GetFlags2() & ITEM_FLAG2_CASTER_WEAPON)
                 store = &sItemDamageOneHandCasterStore;
             else
                 store = &sItemDamageOneHandStore;
@@ -135,4 +136,21 @@ void ItemTemplate::GetDamage(uint32 itemLevel, float& minDamage, float& maxDamag
     float avgDamage = dps * GetDelay() * 0.001f;
     minDamage = (GetStatScalingFactor() * -0.5f + 1.0f) * avgDamage;
     maxDamage = floor(float(avgDamage * (GetStatScalingFactor() * 0.5f + 1.0f) + 0.5f));
+}
+
+bool ItemTemplate::CanWinForPlayer(Player const* player) const
+{
+    std::unordered_set<uint32> const& specs = Specializations[player->getLevel() > 40];
+    if (specs.empty())
+        return true;
+
+    uint32 spec = player->GetSpecId(player->GetActiveTalentGroup());
+    if (!spec)
+        spec = player->GetDefaultSpecId();
+
+    if (!spec)
+        return false;
+
+    auto itr = specs.find(spec);
+    return itr != specs.end();
 }

@@ -23,9 +23,6 @@
 #include "DBCStructure.h"
 #include "SharedDefines.h"
 
-typedef std::map<uint32, uint32> SpecializationOverrideSpellsList;
-typedef std::map<uint32, SpecializationOverrideSpellsList> SpecializationOverrideSpellsMap;
-
 typedef std::list<uint32> SimpleFactionsList;
 SimpleFactionsList const* GetFactionTeamList(uint32 faction);
 
@@ -44,6 +41,8 @@ WMOAreaTableEntry const* GetWMOAreaTableEntryByTripple(int32 rootid, int32 adtid
 uint32 GetVirtualMapForMapAndZone(uint32 mapid, uint32 zoneId);
 
 std::string const& GetRandomCharacterName(uint8 race, uint8 gender);
+
+std::vector<ItemSpecOverrideEntry const*> const* GetItemSpecOverrides(uint32 itemId);
 
 enum ContentLevels
 {
@@ -67,7 +66,7 @@ void Zone2MapCoordinates(float &x, float &y, uint32 zone);
 void Map2ZoneCoordinates(float &x, float &y, uint32 zone);
 
 typedef std::unordered_map<uint32, std::unordered_map<uint32, MapDifficultyEntry const*>> MapDifficultyMap;
-MapDifficultyEntry const* GetDefaultMapDifficulty(uint32 mapID);
+MapDifficultyEntry const* GetDefaultMapDifficulty(uint32 mapId, Difficulty* difficulty = nullptr);
 MapDifficultyEntry const* GetMapDifficultyData(uint32 mapId, Difficulty difficulty);
 MapDifficultyEntry const* GetDownscaledMapDifficultyData(uint32 mapId, Difficulty &difficulty);
 
@@ -77,6 +76,7 @@ PvPDifficultyEntry const* GetBattlegroundBracketByLevel(uint32 mapid, uint32 lev
 PvPDifficultyEntry const* GetBattlegroundBracketById(uint32 mapid, BattlegroundBracketId id);
 
 CharStartOutfitEntry const* GetCharStartOutfitEntry(uint8 race, uint8 class_, uint8 gender);
+CharSectionsEntry const* GetCharSectionEntry(uint8 race, CharSectionType genType, uint8 gender, uint8 type, uint8 color);
 
 uint32 GetPowerIndexByClass(uint32 powerType, uint32 classId);
 LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, Difficulty difficulty);
@@ -123,8 +123,8 @@ private:
 };
 
 extern DBCStorage <AchievementEntry>             sAchievementStore;
+extern DBCStorage <AnimKitEntry>                 sAnimKitStore;
 extern DBCStorage <AreaTableEntry>               sAreaStore;// recommend access using functions
-extern DBCStorage <AreaGroupEntry>               sAreaGroupStore;
 extern DBCStorage <AreaTriggerEntry>             sAreaTriggerStore;
 extern DBCStorage <ArmorLocationEntry>           sArmorLocationStore;
 extern DBCStorage <AuctionHouseEntry>            sAuctionHouseStore;
@@ -134,6 +134,7 @@ extern DBCStorage <BarberShopStyleEntry>         sBarberShopStyleStore;
 extern DBCStorage <BattlemasterListEntry>        sBattlemasterListStore;
 extern DBCStorage <ChatChannelsEntry>            sChatChannelsStore;
 extern DBCStorage <CharStartOutfitEntry>         sCharStartOutfitStore;
+extern DBCStorage <CharSectionsEntry>            sCharSectionsStore;
 extern DBCStorage <CharTitlesEntry>              sCharTitlesStore;
 extern DBCStorage <ChrClassesEntry>              sChrClassesStore;
 extern DBCStorage <ChrRacesEntry>                sChrRacesStore;
@@ -149,7 +150,6 @@ extern DBCStorage <CreatureSpellDataEntry>       sCreatureSpellDataStore;
 extern DBCStorage <CreatureTypeEntry>            sCreatureTypeStore;
 extern DBCStorage <CriteriaEntry>                sCriteriaStore;
 extern DBCStorage <CriteriaTreeEntry>            sCriteriaTreeStore;
-extern DBCStorage <CurrencyTypesEntry>           sCurrencyTypesStore;
 extern DBCStorage <DestructibleModelDataEntry>   sDestructibleModelDataStore;
 extern DBCStorage <DifficultyEntry>              sDifficultyStore;
 extern DBCStorage <DungeonEncounterEntry>        sDungeonEncounterStore;
@@ -178,7 +178,6 @@ extern GameTable <GtNpcTotalHpExp2Entry>        sGtNpcTotalHpExp2Store;
 extern GameTable <GtNpcTotalHpExp3Entry>        sGtNpcTotalHpExp3Store;
 extern GameTable <GtNpcTotalHpExp4Entry>        sGtNpcTotalHpExp4Store;
 extern GameTable <GtNpcTotalHpExp5Entry>        sGtNpcTotalHpExp5Store;
-extern GameTable <GtOCTClassCombatRatingScalarEntry> sGtOCTClassCombatRatingScalarStore;
 extern GameTable <GtOCTLevelExperienceEntry>    sGtOCTLevelExperienceStore;
 extern GameTable <gtOCTHpPerStaminaEntry>       sGtOCTHpPerStaminaStore;
 extern GameTable <GtRegenMPPerSptEntry>         sGtRegenMPPerSptStore;
@@ -186,6 +185,9 @@ extern GameTable <GtSpellScalingEntry>          sGtSpellScalingStore;
 extern GameTable <GtOCTBaseHPByClassEntry>      sGtOCTBaseHPByClassStore;
 extern GameTable <GtOCTBaseMPByClassEntry>      sGtOCTBaseMPByClassStore;
 extern DBCStorage <GuildPerkSpellsEntry>         sGuildPerkSpellsStore;
+extern DBCStorage <GuildColorBackgroundEntry>    sGuildColorBackgroundStore;
+extern DBCStorage <GuildColorBorderEntry>        sGuildColorBorderStore;
+extern DBCStorage <GuildColorEmblemEntry>        sGuildColorEmblemStore;
 extern DBCStorage <ImportPriceArmorEntry>        sImportPriceArmorStore;
 extern DBCStorage <ImportPriceQualityEntry>      sImportPriceQualityStore;
 extern DBCStorage <ImportPriceShieldEntry>       sImportPriceShieldStore;
@@ -212,6 +214,8 @@ extern DBCStorage <ItemRandomSuffixEntry>        sItemRandomSuffixStore;
 extern DBCStorage <ItemSetEntry>                 sItemSetStore;
 extern DBCStorage <ItemSetSpellEntry>            sItemSetSpellStore;
 extern ItemSetSpellsStore                        sItemSetSpellsStore;
+extern DBCStorage <ItemSpecOverrideEntry>        sItemSpecOverrideStore;
+extern DBCStorage <ItemSpecEntry>                sItemSpecStore;
 extern DBCStorage <LFGDungeonEntry>              sLFGDungeonStore;
 extern DBCStorage <LiquidTypeEntry>              sLiquidTypeStore;
 extern DBCStorage <LockEntry>                    sLockStore;
@@ -228,14 +232,15 @@ extern MapDifficultyMap                          sMapDifficultyMap;
 extern DBCStorage <MovieEntry>                   sMovieStore;
 extern DBCStorage <PowerDisplayEntry>            sPowerDisplayStore;
 extern DBCStorage <QuestSortEntry>               sQuestSortStore;
+extern DBCStorage <QuestMoneyRewardEntry>        sQuestMoneyRewardStore;
 extern DBCStorage <QuestXPEntry>                 sQuestXPStore;
 extern DBCStorage <QuestFactionRewEntry>         sQuestFactionRewardStore;
 extern DBCStorage <RandomPropertiesPointsEntry>  sRandomPropertiesPointsStore;
 extern DBCStorage <ScalingStatDistributionEntry> sScalingStatDistributionStore;
 extern DBCStorage <SkillLineEntry>               sSkillLineStore;
 extern DBCStorage <SkillLineAbilityEntry>        sSkillLineAbilityStore;
+extern DBCStorage <SkillRaceClassInfoEntry>      sSkillRaceClassInfoStore;
 extern DBCStorage <SkillTiersEntry>              sSkillTiersStore;
-extern DBCStorage <SoundEntriesEntry>            sSoundEntriesStore;
 extern SpellEffectScallingByEffectId             sSpellEffectScallingByEffectId;
 extern DBCStorage <SpellCastTimesEntry>          sSpellCastTimesStore;
 extern DBCStorage <SpellCategoryEntry>           sSpellCategoryStore;

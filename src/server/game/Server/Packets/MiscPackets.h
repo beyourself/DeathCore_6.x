@@ -24,6 +24,7 @@
 #include "G3D/Vector3.h"
 #include "Object.h"
 #include "Unit.h"
+#include "Player.h"
 #include "Weather.h"
 
 namespace WorldPackets
@@ -33,7 +34,7 @@ namespace WorldPackets
         class BindPointUpdate final : public ServerPacket
         {
         public:
-            BindPointUpdate() : ServerPacket(SMSG_BINDPOINTUPDATE, 20) { }
+            BindPointUpdate() : ServerPacket(SMSG_BIND_POINT_UPDATE, 20) { }
 
             WorldPacket const* Write() override;
 
@@ -78,7 +79,7 @@ namespace WorldPackets
         class LoginSetTimeSpeed final : public ServerPacket
         {
         public:
-            LoginSetTimeSpeed() : ServerPacket(SMSG_LOGIN_SETTIMESPEED, 20) { }
+            LoginSetTimeSpeed() : ServerPacket(SMSG_LOGIN_SET_TIME_SPEED, 20) { }
 
             WorldPacket const* Write() override;
 
@@ -147,7 +148,7 @@ namespace WorldPackets
         class TimeSyncRequest final : public ServerPacket
         {
         public:
-            TimeSyncRequest() : ServerPacket(SMSG_TIME_SYNC_REQ, 4) { }
+            TimeSyncRequest() : ServerPacket(SMSG_TIME_SYNC_REQUEST, 4) { }
 
             WorldPacket const* Write() override;
 
@@ -219,7 +220,7 @@ namespace WorldPackets
         class TutorialSetFlag final : public ClientPacket
         {
         public:
-            TutorialSetFlag(WorldPacket&& packet) : ClientPacket(CMSG_TUTORIAL_FLAG, std::move(packet)) { }
+            TutorialSetFlag(WorldPacket&& packet) : ClientPacket(CMSG_TUTORIAL, std::move(packet)) { }
 
             void Read() override;
 
@@ -246,7 +247,7 @@ namespace WorldPackets
         class AreaTrigger final : public ClientPacket
         {
         public:
-            AreaTrigger(WorldPacket&& packet) : ClientPacket(CMSG_AREATRIGGER, std::move(packet)) { }
+            AreaTrigger(WorldPacket&& packet) : ClientPacket(CMSG_AREA_TRIGGER, std::move(packet)) { }
 
             void Read() override;
 
@@ -289,7 +290,7 @@ namespace WorldPackets
         class RaidDifficultySet final : public ServerPacket
         {
         public:
-            RaidDifficultySet() : ServerPacket(SMSG_SET_RAID_DIFFICULTY, 4 + 1) { }
+            RaidDifficultySet() : ServerPacket(SMSG_RAID_DIFFICULTY_SET, 4 + 1) { }
 
             WorldPacket const* Write() override;
 
@@ -321,7 +322,7 @@ namespace WorldPackets
         class PortGraveyard final : public ClientPacket
         {
         public:
-            PortGraveyard(WorldPacket&& packet) : ClientPacket(CMSG_PORT_GRAVEYARD, std::move(packet)) { }
+            PortGraveyard(WorldPacket&& packet) : ClientPacket(CMSG_CLIENT_PORT_GRAVEYARD, std::move(packet)) { }
 
             void Read() override { }
         };
@@ -420,12 +421,269 @@ namespace WorldPackets
         class StandStateUpdate final : public ServerPacket
         {
         public:
-            StandStateUpdate() : ServerPacket(SMSG_STAND_STATE_UPDATE, 1) { }
-            StandStateUpdate(UnitStandStateType state) : ServerPacket(SMSG_STAND_STATE_UPDATE, 1), State(state) { }
+            StandStateUpdate() : ServerPacket(SMSG_STAND_STATE_UPDATE, 4 + 1) { }
+            StandStateUpdate(UnitStandStateType state) : ServerPacket(SMSG_STAND_STATE_UPDATE, 4 + 1), State(state) { }
 
             WorldPacket const* Write() override;
 
+            uint32 UnkWoD1 = 0; /// @todo 6.1.0 resarch new value
             UnitStandStateType State = UNIT_STAND_STATE_STAND;
+        };
+
+        class StartMirrorTimer final : public ServerPacket
+        {
+        public:
+            StartMirrorTimer() : ServerPacket(SMSG_START_MIRROR_TIMER, 21) { }
+            StartMirrorTimer(int32 timer, int32 value, int32 maxValue, int32 scale, int32 spellID, bool paused) :
+                ServerPacket(SMSG_START_MIRROR_TIMER, 21), Scale(scale), MaxValue(maxValue), Timer(timer), SpellID(spellID), Value(value), Paused(paused) { }
+
+            WorldPacket const* Write() override;
+
+            int32 Scale = 0;
+            int32 MaxValue = 0;
+            int32 Timer = 0;
+            int32 SpellID = 0;
+            int32 Value = 0;
+            bool Paused = false;
+        };
+
+        class PauseMirrorTimer final : public ServerPacket
+        {
+        public:
+            PauseMirrorTimer() : ServerPacket(SMSG_PAUSE_MIRROR_TIMER, 5) { }
+            PauseMirrorTimer(int32 timer, bool paused) : ServerPacket(SMSG_PAUSE_MIRROR_TIMER, 5), Paused(paused), Timer(timer) { }
+
+            WorldPacket const* Write() override;
+
+            bool Paused = true;
+            int32 Timer = 0;
+        };
+
+        class StopMirrorTimer final : public ServerPacket
+        {
+        public:
+            StopMirrorTimer() : ServerPacket(SMSG_STOP_MIRROR_TIMER, 4) { }
+            StopMirrorTimer(int32 timer) : ServerPacket(SMSG_STOP_MIRROR_TIMER, 4), Timer(timer) { }
+
+            WorldPacket const* Write() override;
+
+            int32 Timer = 0;
+        };
+
+        class ExplorationExperience final : public ServerPacket
+        {
+        public:
+            ExplorationExperience() : ServerPacket(SMSG_EXPLORATION_EXPERIENCE, 8) { }
+            ExplorationExperience(int32 experience, int32 areaID) : ServerPacket(SMSG_EXPLORATION_EXPERIENCE, 8), Experience(experience), AreaID(areaID) { }
+
+            WorldPacket const* Write() override;
+
+            int32 Experience = 0;
+            int32 AreaID = 0;
+        };
+
+        class LevelUpInfo final : public ServerPacket
+        {
+        public:
+            LevelUpInfo() : ServerPacket(SMSG_LEVEL_UP_INFO, 56) { }
+
+            WorldPacket const* Write() override;
+
+            int32 Level = 0;
+            int32 HealthDelta = 0;
+            std::array<int32, 6> PowerDelta;
+            std::array<int32, MAX_STATS> StatDelta;
+            int32 Cp = 0;
+        };
+
+        class PlayMusic final : public ServerPacket
+        {
+        public:
+            PlayMusic() : ServerPacket(SMSG_PLAY_MUSIC, 4) { }
+            PlayMusic(uint32 soundKitID) : ServerPacket(SMSG_PLAY_MUSIC, 4), SoundKitID(soundKitID) { }
+
+            WorldPacket const* Write() override;
+
+            uint32 SoundKitID = 0;
+        };
+
+        class RandomRollClient final : public ClientPacket
+        {
+        public:
+            RandomRollClient(WorldPacket&& packet) : ClientPacket(CMSG_RANDOM_ROLL, std::move(packet)) { }
+
+            void Read() override;
+
+            int32 Min = 0;
+            int32 Max = 0;
+            uint8 PartyIndex = 0;
+        };
+
+        class RandomRoll final : public ServerPacket
+        {
+        public:
+            RandomRoll() : ServerPacket(SMSG_RANDOM_ROLL, 16 + 16 + 4 + 4 + 4) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Roller;
+            ObjectGuid RollerWowAccount;
+            int32 Min = 0;
+            int32 Max = 0;
+            int32 Result = 0;
+        };
+
+        class EnableBarberShop final : public ServerPacket
+        {
+        public:
+            EnableBarberShop() : ServerPacket(SMSG_ENABLE_BARBER_SHOP, 0) { }
+
+            WorldPacket const* Write() override { return &_worldPacket; }
+        };
+
+        class PhaseShift final : public ServerPacket
+        {
+        public:
+            PhaseShift() : ServerPacket(SMSG_PHASE_SHIFT_CHANGE, 4) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid ClientGUID;
+            ObjectGuid PersonalGUID;
+            std::set<uint32> PhaseShifts;
+            std::set<uint32> PreloadMapIDs;
+            std::set<uint32> UiWorldMapAreaIDSwaps;
+            std::set<uint32> VisibleMapIDs;
+        };
+
+        class ZoneUnderAttack final : public ServerPacket
+        {
+        public:
+            ZoneUnderAttack() : ServerPacket(SMSG_ZONE_UNDER_ATTACK, 4) { }
+
+            WorldPacket const* Write() override;
+
+            int32 AreaID = 0;
+        };
+
+        class DurabilityDamageDeath final : public ServerPacket
+        {
+        public:
+            DurabilityDamageDeath() : ServerPacket(SMSG_DURABILITY_DAMAGE_DEATH, 4) { }
+
+            WorldPacket const* Write() override;
+
+            int32 Percent = 0;
+        };
+
+        class ObjectUpdateFailed final : public ClientPacket
+        {
+        public:
+            ObjectUpdateFailed(WorldPacket&& packet) : ClientPacket(CMSG_OBJECT_UPDATE_FAILED, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid ObjectGUID;
+        };
+
+        class ObjectUpdateRescued final : public ClientPacket
+        {
+        public:
+            ObjectUpdateRescued(WorldPacket&& packet) : ClientPacket(CMSG_OBJECT_UPDATE_RESCUED, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid ObjectGUID;
+        };
+
+        class PlaySound final : public ServerPacket
+        {
+        public:
+            PlaySound() : ServerPacket(SMSG_PLAY_SOUND, 20) { }
+            PlaySound(ObjectGuid sourceObjectGuid, int32 soundKitID) : ServerPacket(SMSG_PLAY_SOUND, 20), SourceObjectGuid(sourceObjectGuid), SoundKitID(soundKitID) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid SourceObjectGuid;
+            int32 SoundKitID = 0;
+        };
+
+        class CompleteCinematic final : public ClientPacket
+        {
+        public:
+            CompleteCinematic(WorldPacket&& packet) : ClientPacket(CMSG_COMPLETE_CINEMATIC, std::move(packet)) { }
+
+            void Read() override { }
+        };
+
+        class NextCinematicCamera final : public ClientPacket
+        {
+        public:
+            NextCinematicCamera(WorldPacket&& packet) : ClientPacket(CMSG_NEXT_CINEMATIC_CAMERA, std::move(packet)) { }
+
+            void Read() override { }
+        };
+
+        class FarSight final : public ClientPacket
+        {
+        public:
+            FarSight(WorldPacket&& packet) : ClientPacket(CMSG_FAR_SIGHT, std::move(packet)) { }
+
+            void Read() override;
+
+            bool Enable = false;
+        };
+
+        class Dismount final : public ServerPacket
+        {
+        public:
+            Dismount() : ServerPacket(SMSG_DISMOUNT, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Guid;
+        };
+
+        class SaveCUFProfiles final : public ClientPacket
+        {
+        public:
+            SaveCUFProfiles(WorldPacket&& packet) : ClientPacket(CMSG_SAVE_CUF_PROFILES, std::move(packet)) { }
+
+            void Read() override;
+
+            std::vector<std::unique_ptr<CUFProfile>> CUFProfiles;
+        };
+
+        class LoadCUFProfiles final : public ServerPacket
+        {
+        public:
+            LoadCUFProfiles() : ServerPacket(SMSG_LOAD_CUF_PROFILES, 20) { }
+
+            WorldPacket const* Write() override;
+
+            std::vector<CUFProfile const*> CUFProfiles;
+        };
+
+        class SetAIAnimKit final : public ServerPacket
+        {
+        public:
+            SetAIAnimKit() : ServerPacket(SMSG_SET_AI_ANIM_KIT, 16 + 2) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Unit;
+            uint16 AnimKitID = 0;
+        };
+
+        class SetPlayHoverAnim final : public ServerPacket
+        {
+        public:
+            SetPlayHoverAnim() : ServerPacket(SMSG_SET_PLAY_HOVER_ANIM, 16 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid UnitGUID;
+            bool PlayHoverAnim = false;
         };
     }
 }

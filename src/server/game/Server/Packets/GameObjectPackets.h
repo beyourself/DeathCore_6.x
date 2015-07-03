@@ -27,24 +27,44 @@ namespace WorldPackets
 {
     namespace GameObject
     {
-        class GameObjectUse final : public ClientPacket
+        class GameObjUse final : public ClientPacket
         {
         public:
-            GameObjectUse(WorldPacket&& packet) : ClientPacket(CMSG_GAMEOBJ_USE, std::move(packet)) { }
+            GameObjUse(WorldPacket&& packet) : ClientPacket(CMSG_GAME_OBJ_USE, std::move(packet)) { }
 
             void Read() override;
 
             ObjectGuid Guid;
         };
 
-        class GameObjectReportUse final : public ClientPacket
+        class GameObjReportUse final : public ClientPacket
         {
         public:
-            GameObjectReportUse(WorldPacket&& packet) : ClientPacket(CMSG_GAMEOBJ_REPORT_USE, std::move(packet)) { }
+            GameObjReportUse(WorldPacket&& packet) : ClientPacket(CMSG_GAME_OBJ_REPORT_USE, std::move(packet)) { }
 
             void Read() override;
 
             ObjectGuid Guid;
+        };
+
+        class GameObjectDespawn final : public ServerPacket
+        {
+        public:
+            GameObjectDespawn() : ServerPacket(SMSG_GAME_OBJECT_DESPAWN, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid ObjectGUID;
+        };
+
+        class PageText final : public ServerPacket
+        {
+        public:
+            PageText() : ServerPacket(SMSG_PAGE_TEXT, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid GameObjectGUID;
         };
     }
 }

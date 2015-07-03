@@ -72,7 +72,9 @@ enum ChatNotify
     CHAT_NOT_IN_AREA_NOTICE           = 0x20,           //+ "[%s] You are not in the correct area for this channel."; -- The user is trying to send a chat to a zone specific channel, and they're not physically in that zone.
     CHAT_NOT_IN_LFG_NOTICE            = 0x21,           //+ "[%s] You must be queued in looking for group before joining this channel."; -- The user must be in the looking for group system to join LFG chat channels.
     CHAT_VOICE_ON_NOTICE              = 0x22,           //+ "[%s] Channel voice enabled by %s.";
-    CHAT_VOICE_OFF_NOTICE             = 0x23            //+ "[%s] Channel voice disabled by %s.";
+    CHAT_VOICE_OFF_NOTICE             = 0x23,           //+ "[%s] Channel voice disabled by %s.";
+    CHAT_TRIAL_RESTRICTED             = 0x24,
+    CHAT_NOT_ALLOWED_IN_CHANNEL       = 0x25
 };
 
 enum ChannelFlags
@@ -174,7 +176,7 @@ class Channel
         std::string const& GetPassword() const { return _password; }
         void SetPassword(std::string const& npassword) { _password = npassword; }
         void SetAnnounce(bool nannounce) { _announce = nannounce; }
-        uint32 GetNumPlayers() const { return _playersStore.size(); }
+        uint32 GetNumPlayers() const { return uint32(_playersStore.size()); }
         uint8 GetFlags() const { return _flags; }
         bool HasFlag(uint8 flag) const { return (_flags & flag) != 0; }
 
@@ -206,7 +208,7 @@ class Channel
         void DeVoice(Player const* player);
         void JoinNotify(Player const* player);
         void LeaveNotify(Player const* player);
-        void SetOwnership(bool ownership) { _ownership = ownership; };
+        void SetOwnership(bool ownership) { _ownership = ownership; }
         static void CleanOldChannelsInDB();
 
     private:

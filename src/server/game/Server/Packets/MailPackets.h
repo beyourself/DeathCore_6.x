@@ -58,7 +58,6 @@ namespace WorldPackets
             int32 MailID = 0;
             uint8 SenderType = 0;
             Optional<ObjectGuid> SenderCharacter;
-            Query::PlayerGuidLookupHint SenderHint;
             Optional<uint32> AltSenderID;
             int64 Cod = 0;
             int32 PackageID = 0;
@@ -75,7 +74,7 @@ namespace WorldPackets
         class MailGetList final : public ClientPacket
         {
         public:
-            MailGetList(WorldPacket&& packet) : ClientPacket(CMSG_GET_MAIL_LIST, std::move(packet)) { }
+            MailGetList(WorldPacket&& packet) : ClientPacket(CMSG_MAIL_GET_LIST, std::move(packet)) { }
 
             void Read() override;
 
@@ -137,7 +136,7 @@ namespace WorldPackets
         class MailCommandResult final : public ServerPacket
         {
         public:
-            MailCommandResult() : ServerPacket(SMSG_SEND_MAIL_RESULT) { }
+            MailCommandResult() : ServerPacket(SMSG_MAIL_COMMAND_RESULT) { }
 
             WorldPacket const* Write() override;
 
@@ -223,7 +222,6 @@ namespace WorldPackets
                 MailNextTimeEntry(::Mail const* mail);
 
                 ObjectGuid SenderGuid;
-                Query::PlayerGuidLookupHint SenderHint;
                 float TimeLeft = 0.0f;
                 int32 AltSenderID = 0;
                 int8 AltSenderType = 0;
@@ -248,6 +246,15 @@ namespace WorldPackets
             float Delay = 0.0f;
         };
 
+        class ShowMailbox final : public ServerPacket
+        {
+        public:
+            ShowMailbox() : ServerPacket(SMSG_SHOW_MAILBOX, 16) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid PostmasterGUID;
+        };
     }
 }
 

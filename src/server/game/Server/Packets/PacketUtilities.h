@@ -15,26 +15,69 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#ifndef PacketUtilities_h__
+#define PacketUtilities_h__
+
+#include "ByteBuffer.h"
+#include <G3D/Vector2.h>
+#include <G3D/Vector3.h>
+
+inline ByteBuffer& operator<<(ByteBuffer& data, G3D::Vector2 const& v)
+{
+    data << v.x << v.y;
+    return data;
+}
+
+inline ByteBuffer& operator>>(ByteBuffer& data, G3D::Vector2& v)
+{
+    data >> v.x >> v.y;
+    return data;
+}
+
+inline ByteBuffer& operator<<(ByteBuffer& data, G3D::Vector3 const& v)
+{
+    data << v.x << v.y << v.z;
+    return data;
+}
+
+inline ByteBuffer& operator>>(ByteBuffer& data, G3D::Vector3& v)
+{
+    data >> v.x >> v.y >> v.z;
+    return data;
+}
 
 namespace WorldPackets
 {
-    inline ByteBuffer& operator<<(ByteBuffer& data, G3D::Vector3 const& v)
-    {
-        data << v.x << v.y << v.z;
-        return data;
-    }
-
-    inline ByteBuffer& operator>>(ByteBuffer& data, G3D::Vector3& v)
-    {
-        data >> v.x >> v.y >> v.z;
-        return data;
-    }
-
     template <typename T>
-    struct CompactArray
+    class CompactArray
     {
     public:
+        CompactArray() : _mask(0) { }
+
+        CompactArray(CompactArray const& right)
+            : _mask(right._mask), _contents(right._contents) { }
+
+        CompactArray(CompactArray&& right)
+            : _mask(right._mask), _contents(std::move(right._contents))
+        {
+            right._mask = 0;
+        }
+
+        CompactArray& operator= (CompactArray const& right)
+        {
+            _mask = right._mask;
+            _contents = right._contents;
+            return *this;
+        }
+
+        CompactArray& operator= (CompactArray&& right)
+        {
+            _mask = right._mask;
+            right._mask = 0;
+            _contents = std::move(right._contents);
+            return *this;
+        }
+
         uint32 GetMask() const { return _mask; }
         T const& operator[](size_t index) const { return _contents.at(index); }
         size_t GetSize() const { return _contents.size(); }
@@ -56,7 +99,7 @@ namespace WorldPackets
         }
 
     private:
-        uint32 _mask = 0;
+        uint32 _mask;
         std::vector<T> _contents;
     };
 
@@ -93,3 +136,5 @@ namespace WorldPackets
         return data;
     }
 }
+
+#endif // PacketUtilities_h__

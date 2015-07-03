@@ -40,7 +40,7 @@
 #ifndef _RBAC_H
 #define _RBAC_H
 
-#include "Define.h"
+#include "DatabaseEnv.h"
 #include <string>
 #include <set>
 #include <map>
@@ -59,9 +59,9 @@ enum RBACPermissions
     //  7 - reuse
     //  8 - reuse
     //  9 - reuse
-    // 10 - reuse
+    RBAC_PERM_USE_CHARACTER_TEMPLATES                        = 10,
     RBAC_PERM_LOG_GM_TRADE                                   = 11,
-    // 12 - reuse
+    //  12 - reuse
     RBAC_PERM_SKIP_CHECK_INSTANCE_REQUIRED_BOSSES            = 13,
     RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_TEAMMASK         = 14,
     RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_CLASSMASK        = 15,
@@ -554,7 +554,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_RELOAD_GAMEOBJECT_QUESTENDER           = 647,
     RBAC_PERM_COMMAND_RELOAD_GAMEOBJECT_QUEST_LOOT_TEMPLATE  = 648,
     RBAC_PERM_COMMAND_RELOAD_GAMEOBJECT_QUESTSTARTER         = 649,
-    RBAC_PERM_COMMAND_RELOAD_GM_TICKETS                      = 650,
+    RBAC_PERM_COMMAND_RELOAD_SUPPORT_SYSTEM                  = 650,
     RBAC_PERM_COMMAND_RELOAD_GOSSIP_MENU                     = 651,
     RBAC_PERM_COMMAND_RELOAD_GOSSIP_MENU_OPTION              = 652,
     RBAC_PERM_COMMAND_RELOAD_ITEM_ENCHANTMENT_TEMPLATE       = 653,
@@ -566,12 +566,12 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_RELOAD_LOCALES_CRETURE_TEXT            = 659,
     RBAC_PERM_COMMAND_RELOAD_LOCALES_GAMEOBJECT              = 660,
     RBAC_PERM_COMMAND_RELOAD_LOCALES_GOSSIP_MENU_OPTION      = 661,
-    RBAC_PERM_COMMAND_RELOAD_LOCALES_ITEM                    = 662,
+    RBAC_PERM_COMMAND_RELOAD_CHARACTER_TEMPLATE              = 662,
     RBAC_PERM_COMMAND_RELOAD_LOCALES_ITEM_SET_NAME           = 663,
-    RBAC_PERM_COMMAND_RELOAD_LOCALES_NPC_TEXT                = 664,
+    RBAC_PERM_COMMAND_RELOAD_QUEST_GREETING                  = 664,
     RBAC_PERM_COMMAND_RELOAD_LOCALES_PAGE_TEXT               = 665,
     RBAC_PERM_COMMAND_RELOAD_LOCALES_POINTS_OF_INTEREST      = 666,
-    RBAC_PERM_COMMAND_RELOAD_LOCALES_QUEST                   = 667,
+    RBAC_PERM_COMMAND_RELOAD_QUEST_LOCALE                    = 667,
     RBAC_PERM_COMMAND_RELOAD_MAIL_LEVEL_REWARD               = 668,
     RBAC_PERM_COMMAND_RELOAD_MAIL_LOOT_TEMPLATE              = 669,
     RBAC_PERM_COMMAND_RELOAD_MILLING_LOOT_TEMPLATE           = 670,
@@ -596,7 +596,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_RELOAD_SMART_SCRIPTS                   = 689,
     RBAC_PERM_COMMAND_RELOAD_SPELL_REQUIRED                  = 690,
     RBAC_PERM_COMMAND_RELOAD_SPELL_AREA                      = 691,
-    // REUSE
+    RBAC_PERM_COMMAND_DEBUG_SEND_PLAYSCENE                   = 692,
     RBAC_PERM_COMMAND_RELOAD_SPELL_GROUP                     = 693,
     RBAC_PERM_COMMAND_RELOAD_SPELL_LEARN_SPELL               = 694,
     RBAC_PERM_COMMAND_RELOAD_SPELL_LOOT_TEMPLATE             = 695,
@@ -703,6 +703,42 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_INSTANCE_GET_BOSS_STATE                = 796,
     RBAC_PERM_COMMAND_PVPSTATS                               = 797,
     RBAC_PERM_COMMAND_MODIFY_XP                              = 798,
+    RBAC_PERM_COMMAND_GO_BUG_TICKET                          = 799,
+    RBAC_PERM_COMMAND_GO_COMPLAINT_TICKET                    = 800,
+    RBAC_PERM_COMMAND_GO_SUGGESTION_TICKET                   = 801,
+    RBAC_PERM_COMMAND_TICKET_BUG                             = 802,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT                       = 803,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION                      = 804,
+    RBAC_PERM_COMMAND_TICKET_BUG_ASSIGN                      = 805,
+    RBAC_PERM_COMMAND_TICKET_BUG_CLOSE                       = 806,
+    RBAC_PERM_COMMAND_TICKET_BUG_CLOSEDLIST                  = 807,
+    RBAC_PERM_COMMAND_TICKET_BUG_COMMENT                     = 808,
+    RBAC_PERM_COMMAND_TICKET_BUG_DELETE                      = 809,
+    RBAC_PERM_COMMAND_TICKET_BUG_LIST                        = 810,
+    RBAC_PERM_COMMAND_TICKET_BUG_UNASSIGN                    = 811,
+    RBAC_PERM_COMMAND_TICKET_BUG_VIEW                        = 812,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_ASSIGN                = 813,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_CLOSE                 = 814,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_CLOSEDLIST            = 815,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_COMMENT               = 816,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_DELETE                = 817,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_LIST                  = 818,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_UNASSIGN              = 819,
+    RBAC_PERM_COMMAND_TICKET_COMPLAINT_VIEW                  = 820,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_ASSIGN               = 821,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_CLOSE                = 822,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_CLOSEDLIST           = 823,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_COMMENT              = 824,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_DELETE               = 825,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_LIST                 = 826,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_UNASSIGN             = 827,
+    RBAC_PERM_COMMAND_TICKET_SUGGESTION_VIEW                 = 828,
+    RBAC_PERM_COMMAND_TICKET_RESET_ALL                       = 829,
+    RBAC_PERM_COMMAND_TICKET_RESET_GM                        = 830,
+    RBAC_PERM_COMMAND_TICKET_RESET_BUG                       = 831,
+    RBAC_PERM_COMMAND_TICKET_RESET_COMPLAINT                 = 832,
+    RBAC_PERM_COMMAND_TICKET_RESET_SUGGESTION                = 833,
+    RBAC_PERM_COMMAND_GO_QUEST                               = 834,
 
     // custom permissions 1000+
     RBAC_PERM_MAX
@@ -811,6 +847,7 @@ class RBACData
          * @return Success or failure (with reason) to grant the permission
          *
          * Example Usage:
+         * @code
          * // previously defined "RBACData* rbac" with proper initialization
          * uint32 permissionId = 2;
          * if (rbac->GrantRole(permissionId) == RBAC_IN_DENIED_LIST)
@@ -834,6 +871,7 @@ class RBACData
          * @return Success or failure (with reason) to deny the permission
          *
          * Example Usage:
+         * @code
          * // previously defined "RBACData* rbac" with proper initialization
          * uint32 permissionId = 2;
          * if (rbac->DenyRole(permissionId) == RBAC_ID_DOES_NOT_EXISTS)
@@ -858,6 +896,7 @@ class RBACData
          * @return Success or failure (with reason) to remove the permission
          *
          * Example Usage:
+         * @code
          * // previously defined "RBACData* rbac" with proper initialization
          * uint32 permissionId = 2;
          * if (rbac->RevokeRole(permissionId) == RBAC_OK)
@@ -868,6 +907,8 @@ class RBACData
 
         /// Loads all permissions assigned to current account
         void LoadFromDB();
+        PreparedQueryResultFuture LoadFromDBAsync();
+        void LoadFromDBCallback(PreparedQueryResult result);
 
         /// Sets security level
         void SetSecurityLevel(uint8 id)
@@ -948,9 +989,6 @@ class RBACData
          *
          * Given a list of permissions, gets all the inherited permissions
          * @param permissions The list of permissions to expand
-         *
-         * @return new list of permissions containing original permissions and
-         * all other pemissions that are linked to the original ones
          */
         void ExpandPermissions(RBACPermissionContainer& permissions);
 
