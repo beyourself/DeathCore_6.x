@@ -1,20 +1,21 @@
 /*
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460010;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460011;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460012;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460013;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=113735;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=113563;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460020;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460021;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460022;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460023;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460024;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460025;
-UPDATE gameobject_template SET ScriptName='door_lever' WHERE entry=460026;
-*/
-
-enum DoorLever{
+ * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+ enum DoorLever{
     max_now       =  15
 };
 
