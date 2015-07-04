@@ -78,9 +78,9 @@ Para mais informações sobre o projeto, visite nosso website em projeto [Noffea
 ## Instalação
 
 Guias de instalação detalhadas estão disponíveis no wiki para 
-[Windows] (http://collab.kpsn.org/display/tc/Installation+Guide), 
-[Linux] (http://collab.kpsn.org/display/tc/Installation+Guide) e 
-[Mac OSX] (http://collab.kpsn.org/display/tc/Installation+Guide).
+[Windows] (#) 
+[Linux] (#) e 
+[Mac OSX] (#).
 
 ## Reportações
 
