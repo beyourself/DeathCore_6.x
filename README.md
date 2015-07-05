@@ -31,15 +31,6 @@ Esta é a nova source da DeathCore que estamos atualizando devagar, adicionando 
 
 [vmaps](#)
 
-##Warlords Of Draenor - Client
- 
-[DeathCore Client](#)
-
-Observações:
-- O DeathCore Client será usado apenas para quem tem o cliente de qualquer versão anterior completa, basta extrai-lo na pasta do mesmo.
-
-[Cliente Completo - World of Warcraft: Warlords of Draenor - Build 19342](#)
-
 
 ##Ferramentas
 
