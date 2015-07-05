@@ -13,15 +13,12 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+ 
 
 
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
 #include "temple_of_the_jade_serpent.h"
-
-/* Notes : What is missing ? : - Some visuals and texts
-*/
 
 
 class instance_temple_of_the_jade_serpent : public InstanceMapScript
@@ -54,15 +51,8 @@ class instance_temple_of_the_jade_serpent : public InstanceMapScript
 		
 					default:
 						break;
-				}
+				};
 
-				switch (creature->GetGUID())
-				{
-					default:
-						break;
-				}
-			}
-			
 			void OnGameObjectCreate(GameObject* go) 
             {
                 switch (go->GetEntry())
@@ -120,6 +110,7 @@ class instance_temple_of_the_jade_serpent : public InstanceMapScript
 			return new instance_temple_of_the_jade_serpent_InstanceMapScript(map);
 		}
 };
+
 
 /*class npc_instance_trigger_totjs: public CreatureScript
 {
@@ -197,7 +188,6 @@ public:
 
 void AddSC_instance_temple_of_the_jade_serpent()
 {
-   new instance_temple_of_the_jade_serpent();
+   //new instance_temple_of_the_jade_serpent();
    //new npc_instance_trigger_totjs();
 }
-

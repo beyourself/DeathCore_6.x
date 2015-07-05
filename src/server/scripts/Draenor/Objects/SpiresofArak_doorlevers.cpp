@@ -16,58 +16,46 @@
  */
 
 enum DoorLever{
-    max_now       =  15
+    max_now       =  9
 };
 
-int32 lever[max_now] = 
+int32 SpiresofArak_lever[max_now] = 
 {
-126091,
-126092,
-126093,
-126094,
-126095,
-126096,
-126097,
-126098,
-126099,
-126100,
-126101,
-126102,
-126103,
-126104,
-126105
+126074,
+126075,
+126076,
+126077,
+126078,
+126079,
+126080,
+126081,
+126082
 };
 
-int32 door[max_now] = 
+int32 SpiresofArak_door[max_now] = 
 {
-225945,
-225944,
-233920,
-227851,
-231933,
-231932,
-233921,
-231938,
-236211,
-236212,
-236213,
-236214,
-236033,
-230848,
-230849
+229038,
+234310,
+234311,
+234312,
+234313,
+234314,
+234315,
+234316,
+235994
 };
 
-class bossdoor_levers1 : public GameObjectScript
+class SpiresofArak_doorlevers : public GameObjectScript
 {
 public:
-    bossdoor_levers1() : GameObjectScript("bossdoor_levers1") { }
+    SpiresofArak_doorlevers() : GameObjectScript("SpiresofArak_doorlevers") { }
 
     bool OnGossipHello(Player* player, GameObject* go)
     {
         for (int i = 0; i < max_now; i++){
-        if (GameObject * Door = go->FindNearestGameObject(door[i], 100.0f))
+        if (GameObject * SpiresofArak_Door = go->FindNearestGameObject(SpiresofArak_door[i], 100.0f))
         {
-                Door->UseDoorOrButton();
+                SpiresofArak_Door->UseDoorOrButton();
                 go->UseDoorOrButton();
         }
         }
@@ -76,7 +64,7 @@ public:
     }
 };
 
-void AddSC_bossdoor_levers1()
+void AddSC_SpiresofArak_doorlevers()
 {
-	new bossdoor_levers1();
+	new SpiresofArak_doorlevers();
 }

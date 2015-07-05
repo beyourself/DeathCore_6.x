@@ -12,14 +12,6 @@
 
 set(scripts_STAT_SRCS
   ${scripts_STAT_SRCS}
-  Draenor/worldboss_Drov.cpp
-  Draenor/worldboss_Tarlna.cpp
-  Draenor/worldboss_Rukhmar.cpp
-  Draenor/Objects/Bonemaw_doorlevers.cpp
-  Draenor/Objects/bossdoor_levers1.cpp
-  Draenor/Raids/Highmaul/Highmaul_doorlevers.cpp
-  Draenor/ShadowmoonValley/DefenseofKarabor/karabor_doorlevers.cpp
-  Draenor/SpiresOfArrak/SpiresofArak_doorlevers.cpp
   Draenor/Dungeons/Auchindoun/Auchindoun.h
   Draenor/Dungeons/Auchindoun/instance_Auchindoun.cpp
   Draenor/Dungeons/Auchindoun/boss_azzakel.cpp
@@ -69,6 +61,12 @@ set(scripts_STAT_SRCS
   Draenor/Dungeons/UpperBlackrockSpire/boss_Ragewing.cpp
   Draenor/Dungeons/UpperBlackrockSpire/boss_Tharbek.cpp
   Draenor/Dungeons/UpperBlackrockSpire/boss_Zaela.cpp
+  Draenor/Garrisons/Garrison_Frostwall/Garrison_Frostwall.cpp
+  Draenor/Objects/Bonemaw_doorlevers.cpp
+  Draenor/Objects/bossdoor_levers1.cpp
+  Draenor/Objects/karabor_doorlevers.cpp
+  Draenor/Objects/SpiresofArak_doorlevers.cpp
+  Draenor/Raids/Highmaul/Highmaul_doorlevers.cpp
   Draenor/Raids/BlackrockFoundry/BlackrockFoundry.h
   Draenor/Raids/BlackrockFoundry/instance_BlackrockFoundry.cpp
   Draenor/Raids/BlackrockFoundry/boss_Blackhand.cpp
@@ -89,7 +87,9 @@ set(scripts_STAT_SRCS
   Draenor/Raids/Highmaul/boss_Tectus.cpp
   Draenor/Raids/Highmaul/boss_TheButcher.cpp
   Draenor/Raids/Highmaul/boss_TwinOgron.cpp
-  Draenor/Garrisons/Garrison_Frostwall/Garrison_Frostwall.cpp
+  Draenor/WorldBoss/worldboss_Drov.cpp
+  Draenor/WorldBoss/worldboss_Tarlna.cpp
+  Draenor/WorldBoss/worldboss_Rukhmar.cpp
 )
 
 message("  -> Prepared: Draenor")

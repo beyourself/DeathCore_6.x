@@ -18,6 +18,9 @@
 
 #ifndef DEF_TEMPLE_OF_THE_JADE_SERPENT_H
 #define DEF_TEMPLE_OF_THE_JADE_SERPENT_H
+#define DataHeader "TE"
+
+uint32 const EncounterCount = 4;
 
 enum Data
 {

@@ -14,60 +14,38 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
-enum DoorLever{
-    max_now       =  15
+ 
+ enum DoorLever{
+    max_now       =  4
 };
 
-int32 lever[max_now] = 
+int32 karabor_lever[max_now] = 
 {
-126091,
-126092,
-126093,
-126094,
-126095,
-126096,
-126097,
-126098,
-126099,
-126100,
-126101,
-126102,
-126103,
-126104,
-126105
+126067,
+126068,
+126069,
+126070
 };
 
-int32 door[max_now] = 
+int32 karabor_door[max_now] = 
 {
-225945,
-225944,
-233920,
-227851,
-231933,
-231932,
-233921,
-231938,
-236211,
-236212,
-236213,
-236214,
-236033,
-230848,
-230849
+236081,
+236082,
+236083,
+236084
 };
 
-class bossdoor_levers1 : public GameObjectScript
+class karabor_doorlevers : public GameObjectScript
 {
 public:
-    bossdoor_levers1() : GameObjectScript("bossdoor_levers1") { }
+    karabor_doorlevers() : GameObjectScript("karabor_doorlevers") { }
 
     bool OnGossipHello(Player* player, GameObject* go)
     {
         for (int i = 0; i < max_now; i++){
-        if (GameObject * Door = go->FindNearestGameObject(door[i], 100.0f))
+        if (GameObject * karabor_Door = go->FindNearestGameObject(karabor_door[i], 100.0f))
         {
-                Door->UseDoorOrButton();
+                karabor_Door->UseDoorOrButton();
                 go->UseDoorOrButton();
         }
         }
@@ -76,7 +54,7 @@ public:
     }
 };
 
-void AddSC_bossdoor_levers1()
+void AddSC_karabor_doorlevers()
 {
-	new bossdoor_levers1();
+	new karabor_doorlevers();
 }
