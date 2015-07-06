@@ -1045,7 +1045,7 @@ BeepAtStart = 1
 #        Example:     "Welcome to John\'s Server@This server runs on DeathCore."
 #        Default:     "Welcome to a DeathCore server."
 
-Motd = "Welcome to a DeathCore server."
+Motd = "Welcome to a DeathCore Open-Sourced Game Emulation."
 
 #
 #    Server.LoginInfo
