@@ -23,13 +23,13 @@ Esta é a nova source da DeathCore que estamos atualizando devagar, adicionando 
 
 ##Arquivos Necessários
 
-[dbc](#)
+[dbc](https://mega.nz/#!24gRxByB!10RL_5WWNeYB4XArUIAXBH6jzXIObYTx983NR_TujJc)
 
-[maps](#)
+[maps](https://mega.nz/#!24gRxByB!10RL_5WWNeYB4XArUIAXBH6jzXIObYTx983NR_TujJc)
 
-[mmaps](#)
+[mmaps](https://mega.nz/#!excDAIgQ!UjenfmnkG5Br99G1d2CuSlSV-ow95vSv4PCDwaYijS8)
 
-[vmaps](#)
+[vmaps](https://mega.nz/#!24gRxByB!10RL_5WWNeYB4XArUIAXBH6jzXIObYTx983NR_TujJc)
 
 
 ##Ferramentas
