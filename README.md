@@ -7,7 +7,7 @@
 `DeathCore_6.x`:[![Build Status](https://travis-ci.org/NoffearrDeathProjecT/DeathCore_6.x.svg?branch=master)](https://travis-ci.org/NoffearrDeathProjecT/DeathCore_6.x)
 
 
-##Informações Gerais do Projeto
+##Informações Gerais do Projeto 
 
 Patch 6.x - NDP-DB 6.x (Alpha)  
 
