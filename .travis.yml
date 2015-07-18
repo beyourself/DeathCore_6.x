@@ -41,7 +41,7 @@ script:
   - cat sql/updates/hotfixes/*.sql | mysql -udeathcore -pdeathcore hotfixes
   - mysql -uroot < sql/create/drop_mysql.sql
   - cd bin
-  - make -j 10
+  - make -j 16
  
 notifications:
   email:
