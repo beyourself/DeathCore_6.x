@@ -2444,6 +2444,8 @@ class Player : public Unit, public GridObject<Player>
         bool IsNeverVisible() const override;
 
         bool IsVisibleGloballyFor(Player const* player) const;
+		bool HasSpellCooldown(uint32 spell_id) const;
+		void AddSpellCooldown(uint32 spell_id, uint32 itemid, time_t end_time);
 
         void SendInitialVisiblePackets(Unit* target);
         void UpdateObjectVisibility(bool forced = true) override;
