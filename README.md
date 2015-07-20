@@ -32,13 +32,6 @@ Esta é a nova source da DeathCore que estamos atualizando devagar, adicionando 
 [vmaps](https://mega.nz/#!qgUmiZiY!L8-Sp506HLoOxt9fuHf_v0QlQt0APZ9s1q0HRbTuOJw)
 
 
-##Ferramentas
-
-Se caso já tenha o cliente e não deseja baixar os arquivos dbc, maps, mmaps e vmaps. Segue abaixo o link para baixar os Extractores e a Connection_Patch.
-
-
-[Ferramentas (Extractores/Connection_Patch] (#)
-
 =====================
 
 ## ![logo](http://i.imgur.com/Ues1gtC.png)
