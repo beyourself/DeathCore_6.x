@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
+ * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/> 
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -679,4 +679,13 @@ void WorldPackets::Movement::SummonResponse::Read()
 {
     _worldPacket >> SummonerGUID;
     Accept = _worldPacket.ReadBit();
+}
+
+WorldPacket const* WorldPackets::Movement::ControlUpdate::Write()
+{
+    _worldPacket << Guid;
+    _worldPacket.WriteBit(On);
+    _worldPacket.FlushBits();
+
+    return &_worldPacket;
 }

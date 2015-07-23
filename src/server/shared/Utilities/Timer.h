@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
+ * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/> 
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -21,10 +21,10 @@
 
 #include <chrono>
 
-using namespace std::chrono;
-
 inline uint32 getMSTime()
 {
+    using namespace std::chrono;
+
     static const system_clock::time_point ApplicationStartTime = system_clock::now();
 
     return uint32(duration_cast<milliseconds>(system_clock::now() - ApplicationStartTime).count());

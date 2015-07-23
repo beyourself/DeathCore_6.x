@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
+ * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/> 
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -411,6 +411,17 @@ namespace WorldPackets
 
             bool Accept = false;
             ObjectGuid SummonerGUID;
+        };
+
+        class ControlUpdate final : public ServerPacket
+        {
+        public:
+            ControlUpdate() : ServerPacket(SMSG_CONTROL_UPDATE, 16 + 1) { }
+
+            WorldPacket const* Write() override;
+
+            ObjectGuid Guid;
+            bool On = false;
         };
     }
 
