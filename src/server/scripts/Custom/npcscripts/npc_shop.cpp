@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/>
+ * Copyright (C) 2013-2015 DeathCore <http://www.noffearrdeathproject.net/> 
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,24 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SC_SCRIPTLOADER_H
-#define SC_SCRIPTLOADER_H
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 
-void AddScripts();
-void AddSpellScripts();
-void AddCommandScripts();
-void AddWorldScripts();
-void AddEasternKingdomsScripts();
-void AddKalimdorScripts();
-void AddOutlandScripts();
-void AddNorthrendScripts();
-void AddMaelstromScripts();
-void AddEventScripts();
-void AddPetScripts();
-void AddBattlegroundScripts();
-void AddOutdoorPvPScripts();
-void AddCustomScripts();
-void AddPandariaScripts();
-void AddDraenorScripts();
+class npc_shop : public CreatureScript
+{
+    public:
+       npc_shop() : CreatureScript("npc_shop") {}
 
-#endif
+};
+
+void AddSC_npc_shop()
+{
+    new npc_shop();
+}
